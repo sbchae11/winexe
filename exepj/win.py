@@ -41,6 +41,9 @@ class MyWindow(QMainWindow):
         model_path = os.path.join(self.script_directory, 'pose_classification_model.pkl')
         self.model = joblib.load(model_path) 
         # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
+        self.ready_save() # 데이터프레임 준비
+        self.setting_file() # csv파일 준비
+        
         v_layout = QVBoxLayout()
         
         self.ui_mainWindow()
@@ -49,10 +52,7 @@ class MyWindow(QMainWindow):
         self.ui_statistic()
         self.ui_mainLayout()
         self.layout_connection()
-        
-        self.menu_below = QLabel(' ')
-        hbox_b = QHBoxLayout()
-        v_layout.addLayout(hbox_b)
+    
         v_layout.addWidget(self.Stack)
         
         
@@ -62,7 +62,9 @@ class MyWindow(QMainWindow):
         
         app.aboutToQuit.connect(self.onExit)
         
+        self.update_time()
         
+    ##############################################################    
         
         # # 보이기
         # self.setLayout(vbox)
@@ -78,6 +80,7 @@ class MyWindow(QMainWindow):
         # screen_size = list(pyautogui.size())
         # self.setGeometry(screen_size[0]-1, screen_size[1]-1, 310, 600)
         self.setGeometry(0, 100, 650, 500)
+        self.setFixedSize(650, 500)
         
     def ui_mainLayout(self):
         # 중앙 레이아웃 위젯
@@ -109,21 +112,29 @@ class MyWindow(QMainWindow):
         
         self.webcam.setLayout(main_layout)
         
-    def ui_menu(self):
-        self.datetime = QDateTime.currentDateTime()
-        self.statusBar().showMessage(self.datetime.toString('yyyy.MM.dd  hh:mm'))
         
-        exitAction = QAction('Exit',self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(qApp.quit)
-
-        self.statusBar()
-
+    def ui_menu(self):
         menubar = self.menuBar()
         menubar.setNativeMenuBar(False)
-        filemenu = menubar.addMenu('&File')
-        filemenu.addAction(exitAction)
+        filemenu = menubar.addMenu('File')
+        self.exitAction = QAction('Exit', self)
+        filemenu.addAction(self.exitAction)
+        
+        # 단축키 지정
+        self.exitAction.setShortcut('Ctrl+Q')
+        self.exitAction.setStatusTip('Exit application')
+        self.exitAction.triggered.connect(self.close)
+                
+        
+    def update_time(self):
+        self.datetime = QDateTime.currentDateTime().toString('yyyy.MM.dd,hh:mm:ss')
+        # dataDate = self.datetime.split(',')
+        # print('지금 시간 : ', '  '.join(dataDate))
+        # print('지금 시간 : ', dataDate)
+        
+        self.statusBar().showMessage(self.datetime)
+        self.statusBar()
+        
         
     def stack_layout(self):
         self.stat = QWidget()
@@ -134,6 +145,22 @@ class MyWindow(QMainWindow):
         self.Stack.addWidget(self.stat)
         
         self.setCentralWidget(self.Stack)
+        
+        
+    def ready_save(self):
+        self.columns = ['timeymd', 'timehms', 'posturetype']
+        # 새로 추가할 데이터
+        self.data = pd.DataFrame(columns=self.columns)
+        
+    def setting_file(self):
+        self.data_path = os.path.join(self.script_directory, 'posture_data.csv')
+        try:
+            # 기존 데이터
+            self.saveData = pd.read_csv(self.data_path)
+        except FileNotFoundError:
+            self.data.to_csv(self.data_path, index=False)
+            self.saveData = pd.read_csv(self.data_path)
+        
         
     def ui_statistic(self):   
                 
@@ -190,9 +217,11 @@ class MyWindow(QMainWindow):
         cap = cv2.VideoCapture(0)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        
         # 시간 측정을 위한 초기 시간 설정
         prev_time = 0
-        interval = 0.3  # 0.3초 간격
+        interval = 3  # 0.3초 간격
         
         mp_holistic = mp.solutions.holistic
         
@@ -288,7 +317,14 @@ class MyWindow(QMainWindow):
                             # now_ymd = datetime.now().strftime('%Y.%m.%d')
                             # now_hms = datetime.now().strftime('%H:%M:%S')
                             # PostureDetection.objects.create(user=request.user, timeymd=now_ymd, timehms=now_hms, posturetype=class_name)
-                            
+                        dataDate = self.datetime.split(',')
+                        dataDate.append(class_name)
+                        # {ymd, hms, posturetype} 데이터 저장
+                        perData = dict(zip(self.columns, dataDate))
+                        perData = pd.DataFrame(perData, index=[0])
+                        self.data = pd.concat([self.data,perData])
+                        self.update_time()
+                        
                     ############################ 윈도우 창에 이미지 출력 #########################
                     h,w,c = image.shape
                     target_height = int(h * (target_width / w))
@@ -297,6 +333,7 @@ class MyWindow(QMainWindow):
                     pixmap = QtGui.QPixmap.fromImage(qImg)
                     # self.webLabel.resize(target_width, target_height)
                     self.webLabel.setPixmap(pixmap)
+                    
                 else:
                     QMessageBox.about(self, "Error", "Cannot read frame.")
                     break
@@ -323,6 +360,9 @@ class MyWindow(QMainWindow):
         
     def onExit(self):
         print('###### exit')
+        self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
+        self.saveData.to_csv(self.data_path, index=False)
+        print('###### file saved')
         self.stop()
         
         
@@ -339,4 +379,3 @@ if __name__ == '__main__':
     myWindow = MyWindow( )
     myWindow.show( )
     app.exec_( )
-    # app.aboutToQuit.connect(myWindow.onExit)
