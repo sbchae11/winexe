@@ -5,8 +5,11 @@ import threading
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5 import QtCore
 from PyQt5 import uic
 from PyQt5 import QtGui
+
+from PyQt5.QtCore import QDate, QTime, Qt, QDateTime
 
 import pyautogui
 
@@ -27,12 +30,26 @@ class MyWindow(QMainWindow):
         super().__init__()
         # self.setupUi(self)
         self.running = False
+        v_layout = QVBoxLayout()
         
         self.ui_mainWindow()
+        self.ui_menu()
+        self.stack_layout()
+        self.ui_statistic()
         self.ui_mainLayout()
         self.layout_connection()
         
+        self.menu_below = QLabel(' ')
+        hbox_b = QHBoxLayout()
+        v_layout.addLayout(hbox_b)
+        v_layout.addWidget(self.Stack)
         
+        
+        self.setLayout(v_layout)
+        self.statisticBtn.setEnabled(True)
+        self.homeBtn.setEnabled(False)
+        
+        app.aboutToQuit.connect(self.onExit)
         
         
         
@@ -51,15 +68,16 @@ class MyWindow(QMainWindow):
         
     def ui_mainLayout(self):
         # 중앙 레이아웃 위젯
-        self.central = QWidget()
-        self.setCentralWidget(self.central)
+        # self.setCentralWidget(self.Stack)
+        
         # 버튼
         self.startBtn = QPushButton(text="▶", parent=self)
-        # pauseBtn = QPushButton(text="||", parent=self)
+        self.statisticBtn = QPushButton(text="통계", parent=self) # 여기서문제
         self.stopBtn = QPushButton(text="■", parent=self)
         
         # 웹캠
         self.webLabel = QLabel("웹캠 들어갈 자리임")
+        self.webLabel.setAlignment(QtCore.Qt.AlignCenter)
         # self.webLabel.setFixedSize(300, 400) 
         
         # 레이아웃
@@ -70,29 +88,99 @@ class MyWindow(QMainWindow):
         # 행 - 버튼
         hbox_btn = QHBoxLayout()
         hbox_btn.addWidget(self.startBtn)
-        # hbox_btn.addWidget(pauseBtn)
         hbox_btn.addWidget(self.stopBtn)
-        
+        hbox_btn.addWidget(self.statisticBtn)
         
         # 열
         main_layout.addLayout(hbox_btn)
         
-        self.central.setLayout(main_layout)
+        self.webcam.setLayout(main_layout)
+        
+    def ui_menu(self):
+        self.datetime = QDateTime.currentDateTime()
+        self.statusBar().showMessage(self.datetime.toString('yyyy.MM.dd  hh:mm'))
+        
+        exitAction = QAction('Exit',self)
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(qApp.quit)
+
+        self.statusBar()
+
+        menubar = self.menuBar()
+        menubar.setNativeMenuBar(False)
+        filemenu = menubar.addMenu('&File')
+        filemenu.addAction(exitAction)
+        
+    def stack_layout(self):
+        self.stat = QWidget()
+        self.webcam = QWidget()
+        
+        self.Stack = QStackedWidget()
+        self.Stack.addWidget(self.webcam)
+        self.Stack.addWidget(self.stat)
+        
+        self.setCentralWidget(self.Stack)
+        
+    def ui_statistic(self):   
+                
+        self.statLabel = QLabel("통계 들어갈 자리")
+        self.statLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        
+        stat_layout = QVBoxLayout()
+        stat_layout.addWidget(self.statLabel)
+        
+        self.homeBtn = QPushButton(text="Back", parent=self)
+        
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.homeBtn)
+        
+        stat_layout.addLayout(hbox)
+        
+        self.stat.setLayout(stat_layout)
         
     
-    ##########################################################
+        
+
+        
+    
+    ########################### 이하 기능 ###############################
     
     def layout_connection(self):
         self.startBtn.clicked.connect(self.start)
         self.stopBtn.clicked.connect(self.stop)
+        self.statisticBtn.clicked.connect(self.show_stat)
+        self.homeBtn.clicked.connect(self.show_webcam)
         
+    def show_webcam(self):
+        self.Stack.setCurrentIndex(0)
+        self.statisticBtn.setEnabled(True)
+        self.startBtn.setEnabled(True)
+        self.stopBtn.setEnabled(True)
+        self.homeBtn.setEnabled(False)
+        print('###### webcam 페이지')
+        
+    def show_stat(self):
+        self.Stack.setCurrentIndex(1)
+        self.stop()
+        self.statisticBtn.setEnabled(False)
+        self.startBtn.setEnabled(False)
+        self.stopBtn.setEnabled(False)
+        self.homeBtn.setEnabled(True)
+        print('###### statistic 페이지')
+        
+    
     
     def run(self):
         cap = cv2.VideoCapture(0)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        self.webLabel.resize(width, height) # ?
+        target_width = 500
+        # target_height = 300
+        
+        # self.webLabel.resize(target_width, target_height) # ?
         
         while self.running:
             ret, frame = cap.read()
@@ -101,8 +189,11 @@ class MyWindow(QMainWindow):
             # 이미지 처리
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h,w,c = image.shape
+                target_height = int(h * (target_width / w))
                 qImg = QtGui.QImage(image.data, w, h, w*c, QtGui.QImage.Format_RGB888)
+                qImg = qImg.scaled(target_width, target_height)
                 pixmap = QtGui.QPixmap.fromImage(qImg)
+                self.webLabel.resize(target_width, target_height)
                 self.webLabel.setPixmap(pixmap)
             else:
                 QMessageBox.about(self, "Error", "Cannot read frame.")
@@ -129,6 +220,7 @@ class MyWindow(QMainWindow):
         self.stop()
         
         
+
 # app = QApplication(sys.argv)
 # myWindow = MyWindow( )
 # myWindow.show( )
@@ -141,4 +233,4 @@ if __name__ == '__main__':
     myWindow = MyWindow( )
     myWindow.show( )
     app.exec_( )
-    app.aboutToQuit.connect(myWindow.onExit)
+    # app.aboutToQuit.connect(myWindow.onExit)
