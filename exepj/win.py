@@ -13,6 +13,12 @@ from PyQt5.QtCore import QDate, QTime, Qt, QDateTime
 
 import pyautogui
 
+import mediapipe as mp
+import joblib
+import numpy as np
+import pandas as pd
+from preprocessing import calculate_angle, calculate_distance, selected_landmarks, landmark_description, stretching_selected_landmarks
+
 
 
 
@@ -30,6 +36,10 @@ class MyWindow(QMainWindow):
         super().__init__()
         # self.setupUi(self)
         self.running = False
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(script_directory, 'pose_classification_model.pkl')
+        self.model = joblib.load(model_path) 
+        # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
         v_layout = QVBoxLayout()
         
         self.ui_mainWindow()
