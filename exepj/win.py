@@ -345,17 +345,14 @@ class MyWindow(QMainWindow):
         
     def stop(self):
         self.running = False
-        # 화면 대기중 출력 아 이거 안되네
-        # pixmap = QtGui.QPixmap('su_final.png')
-        # self.webLabel.setPixmap(pixmap)
-        # waiting_path = os.path.join(self.script_directory, 'su_final.png')
-        # self.webLabel.setPixmap(QtGui.QPixmap(waiting_path))
+        self.startBtn.setEnabled(True)
         print('###### stop')
         
     def start(self):
         self.running = True
         th = threading.Thread(target=self.run)
         th.start()
+        self.startBtn.setEnabled(False)
         print('###### start')
         
     def onExit(self):
@@ -364,15 +361,12 @@ class MyWindow(QMainWindow):
         self.saveData.to_csv(self.data_path, index=False)
         print('###### file saved')
         self.stop()
+       
+    # 데이터 초기화    
+    def delete_data(self):
+        os.remove(self.data_path)
         
         
-
-# app = QApplication(sys.argv)
-# myWindow = MyWindow( )
-# myWindow.show( )
-# app.exec_( )
-
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
