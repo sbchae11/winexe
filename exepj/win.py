@@ -1,3 +1,5 @@
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
 import sys
 import os
 import cv2
@@ -24,6 +26,7 @@ import time
 import win10toast as wt
 
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 
@@ -65,6 +68,9 @@ class MyWindow(QMainWindow):
         self.setLayout(v_layout)
         self.statisticBtn.setEnabled(True)
         self.homeBtn.setEnabled(False)
+        
+        
+        self.show()
         
         app.aboutToQuit.connect(self.onExit)
         
@@ -169,13 +175,41 @@ class MyWindow(QMainWindow):
         
         
     def ui_statistic(self):   
+        
+        plt.rcParams['font.family'] ='Malgun Gothic'
+        plt.rcParams['axes.unicode_minus'] =False
                 
-        self.statLabel = QLabel("통계 들어갈 자리")
-        self.statLabel.setAlignment(QtCore.Qt.AlignCenter)
+        # self.statLabel = QLabel("통계 들어갈 자리")
+        canvas = FigureCanvas(Figure(figsize=(4, 3)))
+        
+        correct_r, incorrect_r, date_ls, typeToday_cnt = self.get_sevendays_data()
+        print('correct_r : ', correct_r)
+        print('incorrect_r : ', incorrect_r)
+        print('date_ls : ', date_ls)
+        print('typeToday_cnt : ', typeToday_cnt)
+        
+        # 꺾은 선 그래프
+        self.ax = canvas.figure.subplots(1,2)
+        self.ax[0].plot(date_ls, correct_r, marker='o', label='correct pose')
+        self.ax[0].plot(date_ls, incorrect_r, marker='o', label='incorrect pose')
 
+        self.ax[0].legend()
+
+        pie_labels = ['거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
+        pie_colors = ['#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
+        wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
+        
+        # 파이차트
+        self.ax[1].pie(typeToday_cnt, labels=pie_labels, autopct='%.1f%%', pctdistance=0.85,
+                      startangle=260, counterclock=False, colors=pie_colors, wedgeprops=wedgeprops)
+        
+        self.ax[1].legend(loc='upper left', fontsize='9')
+        # self.statLabel.setAlignment(QtCore.Qt.AlignCenter)
         
         stat_layout = QVBoxLayout()
-        stat_layout.addWidget(self.statLabel)
+        # stat_layout.addWidget(self.statLabel)
+        stat_layout.addWidget(canvas)
+
         
         self.homeBtn = QPushButton(text="Back", parent=self)
         
@@ -186,6 +220,42 @@ class MyWindow(QMainWindow):
         
         self.stat.setLayout(stat_layout)
         
+    
+    def get_sevendays_data(self):
+        correct_ratio = []
+        incorrect_ratio = []
+        date_col = []
+        
+        today_postureType_cnt = []
+        date = QDateTime.currentDateTime()
+        for i in range(1,8):
+            # n일 전 데이터의 총 개수
+            total = self.saveData.loc[self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd')]['posturetype'].count() 
+            # n일 전 바른 자세 데이터의 총 개수
+            correct = self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']==0)]['posturetype'].count() 
+            # n일 전 나쁜 자세 데이터의 총 개수
+            incorrect = self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']!=0)]['posturetype'].count() 
+            
+            # n일 전 바른 자세 유지 비율 리스트
+            correct_ratio.append(round((correct/total), 2))
+            # n일 전 나쁜 자세 유지 비율 리스트
+            incorrect_ratio.append(round((incorrect/total), 2))
+            
+            # n일 전 날짜 리스트
+            date_col.append(date.addDays(-7+i).toString('MM.dd'))
+            
+            # 오늘자 : 파이차트용 데이터
+            # 각 타입별 개수 리스트
+            # 타입별 라벨 : ['거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
+            # 색상 리스트 : ['#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
+            if i==7:
+                today_postureType_cnt.append(self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']==1)]['posturetype'].count())
+                today_postureType_cnt.append(self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']==2)]['posturetype'].count())
+                today_postureType_cnt.append(self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']==3)]['posturetype'].count())
+                today_postureType_cnt.append(self.saveData.loc[(self.saveData['timeymd']==date.addDays(-7+i).toString('yyyy.MM.dd'))&(self.saveData['posturetype']==4)]['posturetype'].count())
+
+        
+        return correct_ratio, incorrect_ratio, date_col, today_postureType_cnt
     
         
 
@@ -395,6 +465,9 @@ class MyWindow(QMainWindow):
         
     def stretching_alarm(self):
         print('fsdf')
+        # 추가 예정
+        
+
         
         
 
