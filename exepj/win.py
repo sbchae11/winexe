@@ -21,6 +21,10 @@ from preprocessing import calculate_angle, calculate_distance, selected_landmark
 
 import time
 
+import win10toast as wt
+
+import matplotlib.pyplot as plt
+
 
 
 
@@ -43,6 +47,8 @@ class MyWindow(QMainWindow):
         # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
         self.ready_save() # 데이터프레임 준비
         self.setting_file() # csv파일 준비
+        self.usingAlarm = True
+        self.posture_okay = []
         
         v_layout = QVBoxLayout()
         
@@ -221,7 +227,7 @@ class MyWindow(QMainWindow):
         
         # 시간 측정을 위한 초기 시간 설정
         prev_time = 0
-        interval = 3  # 0.3초 간격
+        interval = 3  # n초 간격
         
         mp_holistic = mp.solutions.holistic
         
@@ -317,6 +323,7 @@ class MyWindow(QMainWindow):
                             # now_ymd = datetime.now().strftime('%Y.%m.%d')
                             # now_hms = datetime.now().strftime('%H:%M:%S')
                             # PostureDetection.objects.create(user=request.user, timeymd=now_ymd, timehms=now_hms, posturetype=class_name)
+                        print('class name type : ', type(class_name))
                         dataDate = self.datetime.split(',')
                         dataDate.append(class_name)
                         # {ymd, hms, posturetype} 데이터 저장
@@ -324,6 +331,14 @@ class MyWindow(QMainWindow):
                         perData = pd.DataFrame(perData, index=[0])
                         self.data = pd.concat([self.data,perData])
                         self.update_time()
+                        
+                        self.posture_okay.append(class_name)
+                        print(self.posture_okay)
+                        
+                    if (len(self.posture_okay)==5)&self.usingAlarm:
+                        if self.posture_okay.count(0)==0:
+                            self.bad_posture_alarm()
+                        self.posture_okay = []
                         
                     ############################ 윈도우 창에 이미지 출력 #########################
                     h,w,c = image.shape
@@ -333,6 +348,7 @@ class MyWindow(QMainWindow):
                     pixmap = QtGui.QPixmap.fromImage(qImg)
                     # self.webLabel.resize(target_width, target_height)
                     self.webLabel.setPixmap(pixmap)
+                    
                     
                 else:
                     QMessageBox.about(self, "Error", "Cannot read frame.")
@@ -355,6 +371,7 @@ class MyWindow(QMainWindow):
         self.startBtn.setEnabled(False)
         print('###### start')
         
+        
     def onExit(self):
         print('###### exit')
         self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
@@ -362,9 +379,22 @@ class MyWindow(QMainWindow):
         print('###### file saved')
         self.stop()
        
+       
     # 데이터 초기화    
     def delete_data(self):
         os.remove(self.data_path)
+        
+    
+    def bad_posture_alarm(self):
+        toast = wt.ToastNotifier()
+        ico_path = os.path.join(self.script_directory, 'logo_page.ico')
+        toast.show_toast("!!! 자세 경고 !!!", # 제목
+                "자세가 올바르지 않습니다. \n 건강을 위해 바른 자세를 취해주세요.", # 내용
+                icon_path=ico_path, # icon 위치
+                duration=3)
+        
+    def stretching_alarm(self):
+        print('fsdf')
         
         
 
