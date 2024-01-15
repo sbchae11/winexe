@@ -6,6 +6,7 @@ import threading
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import uic
+from PyQt5 import QtGui
 
 import pyautogui
 
@@ -29,6 +30,7 @@ class MyWindow(QMainWindow):
         
         self.ui_mainWindow()
         self.ui_mainLayout()
+        self.layout_connection()
         
         
         
@@ -58,7 +60,7 @@ class MyWindow(QMainWindow):
         
         # 웹캠
         self.webLabel = QLabel("웹캠 들어갈 자리임")
-        self.webLabel.setFixedSize(300, 400) 
+        # self.webLabel.setFixedSize(300, 400) 
         
         # 레이아웃
         main_layout = QVBoxLayout()
@@ -86,23 +88,24 @@ class MyWindow(QMainWindow):
         
     
     def run(self):
-        cap = cv2.VideoCapture(-1)
-        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        cap = cv2.VideoCapture(0)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         self.webLabel.resize(width, height) # ?
         
         while self.running:
             ret, frame = cap.read()
+            frame = cv2.flip(frame, 1)
             if ret:            
             # 이미지 처리
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h,w,c = image.shape
-                qImg = QtGui.QImage(img.data, w, h, w*c, QtGui.QImage.Format_RGB888)
+                qImg = QtGui.QImage(image.data, w, h, w*c, QtGui.QImage.Format_RGB888)
                 pixmap = QtGui.QPixmap.fromImage(qImg)
                 self.webLabel.setPixmap(pixmap)
             else:
-                QtWidgets.QMessageBox.about(self, "Error", "Cannot read frame.")
+                QMessageBox.about(self, "Error", "Cannot read frame.")
                 break
             
         cap.release()
@@ -110,6 +113,9 @@ class MyWindow(QMainWindow):
         
     def stop(self):
         self.running = False
+        # 화면 대기중 출력 아 이거 안되네
+        # pixmap = QtGui.QPixmap('su_final.png')
+        # self.webLabel.setPixmap(pixmap)
         print('###### stop')
         
     def start(self):
