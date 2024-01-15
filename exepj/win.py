@@ -36,8 +36,8 @@ class MyWindow(QMainWindow):
         super().__init__()
         # self.setupUi(self)
         self.running = False
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(script_directory, 'pose_classification_model.pkl')
+        self.script_directory = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(self.script_directory, 'pose_classification_model.pkl')
         self.model = joblib.load(model_path) 
         # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
         v_layout = QVBoxLayout()
@@ -70,11 +70,13 @@ class MyWindow(QMainWindow):
         # 윈도우 타이틀
         self.setWindowTitle("Posture Defender(made by.team10)")
         # 윈도우 로고
-        self.setWindowIcon(QIcon("logo_page.png")) 
+        logo_path = os.path.join(self.script_directory, 'logo_page.png')
+        self.setWindowIcon(QIcon(logo_path)) 
         
         # (x, y, width, height)
         screen_size = list(pyautogui.size())
-        self.setGeometry(screen_size[0]-1, screen_size[1]-1, 310, 600)
+        # self.setGeometry(screen_size[0]-1, screen_size[1]-1, 310, 600)
+        self.setGeometry(0, 100, 650, 500)
         
     def ui_mainLayout(self):
         # 중앙 레이아웃 위젯
@@ -86,7 +88,7 @@ class MyWindow(QMainWindow):
         self.stopBtn = QPushButton(text="■", parent=self)
         
         # 웹캠
-        self.webLabel = QLabel("웹캠 들어갈 자리임")
+        self.webLabel = QLabel("재생 버튼을 눌러주세요")
         self.webLabel.setAlignment(QtCore.Qt.AlignCenter)
         # self.webLabel.setFixedSize(300, 400) 
         
@@ -201,9 +203,9 @@ class MyWindow(QMainWindow):
                 h,w,c = image.shape
                 target_height = int(h * (target_width / w))
                 qImg = QtGui.QImage(image.data, w, h, w*c, QtGui.QImage.Format_RGB888)
-                qImg = qImg.scaled(target_width, target_height)
+                qImg = qImg.scaled(target_width, target_height, aspectRatioMode=QtCore.Qt.KeepAspectRatio)
                 pixmap = QtGui.QPixmap.fromImage(qImg)
-                self.webLabel.resize(target_width, target_height)
+                # self.webLabel.resize(target_width, target_height)
                 self.webLabel.setPixmap(pixmap)
             else:
                 QMessageBox.about(self, "Error", "Cannot read frame.")
@@ -211,12 +213,16 @@ class MyWindow(QMainWindow):
             
         cap.release()
         print('###### thread end')
+        waiting_path = os.path.join(self.script_directory, 'su_final.png')
+        self.webLabel.setPixmap(QtGui.QPixmap(waiting_path))
         
     def stop(self):
         self.running = False
         # 화면 대기중 출력 아 이거 안되네
         # pixmap = QtGui.QPixmap('su_final.png')
         # self.webLabel.setPixmap(pixmap)
+        # waiting_path = os.path.join(self.script_directory, 'su_final.png')
+        # self.webLabel.setPixmap(QtGui.QPixmap(waiting_path))
         print('###### stop')
         
     def start(self):
