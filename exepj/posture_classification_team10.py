@@ -298,29 +298,84 @@ class MyWindow(QMainWindow):
     def ui_statistic_db(self):   
         
         self.fig = plt.Figure(figsize=(4, 3))
-        self.canvas = FigureCanvas(self.fig)        
+        self.canvas = FigureCanvas(self.fig)       
+        self.canvas2 = FigureCanvas(self.fig) 
         
         
         statdb_layout = QVBoxLayout()
-        statdb_layout.addWidget(self.canvas)
+        # statdb_layout.addWidget(self.canvas)
 
         self.homeBtn = QPushButton(text="Back", parent=self)
         self.quitBtn2 = QPushButton(text="프로그램 종료", parent=self)
         
-        self.lineBtn = QPushButton(text="일주일 간 자세 비율 통계", parent=self)
-        self.pieBtn = QPushButton(text="일일 자세 타입별 통계", parent=self)
+        self.homeBtn2 = QPushButton(text="Back", parent=self)
+        self.quitBtn3 = QPushButton(text="프로그램 종료", parent=self)
         
-        ##############################################################################
-        self.show_chart()
+        
+        
+        self.lineBtn = QPushButton(text="일주일 간 자세 비율 통계", parent=self)
+        self.pieBtn = QPushButton(text="일일 자세 통계", parent=self)
+        
+        
+        self.date_combobox = QComboBox(self)
+        self.date_combobox2 = QComboBox(self)
+        date_list = self.get_alldates()
+        self.date_combobox.addItem(date_list.pop())
+        # self.date_combobox2.addItem(date_list.pop())
+        date_list.sort(reverse=True)
+        self.date_combobox.addItems(date_list)
+        # self.date_combobox2.addItems(date_list)
+        self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+        # self.date_combobox.addItems(date_list)
+        # self.date_combobox.currentIndexChanged.connect(self.show_chart)
+        
+        
         
         hbox = QHBoxLayout()
         # hbox.addWidget(self.homeBtn)
+        # hbox.addWidget(self.pieBtn)
         hbox.addWidget(self.lineBtn)
-        hbox.addWidget(self.pieBtn)
         
-        statdb_layout.addLayout(hbox)
-        statdb_layout.addWidget(self.homeBtn)
-        statdb_layout.addWidget(self.quitBtn2)
+        hbox2 = QHBoxLayout()
+        # hbox.addWidget(self.homeBtn)
+        hbox2.addWidget(self.pieBtn)
+        # hbox2.addWidget(self.lineBtn)
+        
+        
+        self.stat_1 = QWidget()
+        self.stat_2 = QWidget()
+        inner_stat_layout_1 = QVBoxLayout(self.stat_1)
+        inner_stat_layout_2 = QVBoxLayout(self.stat_2)
+        
+        self.inner_Stack = QStackedWidget()
+        self.inner_Stack.addWidget(self.stat_1)
+        # self.Stack.addWidget(self.stat)
+        self.inner_Stack.addWidget(self.stat_2)
+        
+        inner_stat_layout_1.addWidget(self.canvas)
+        inner_stat_layout_1.addWidget(self.date_combobox)
+        inner_stat_layout_1.addLayout(hbox)
+        inner_stat_layout_1.addWidget(self.homeBtn)
+        inner_stat_layout_1.addWidget(self.quitBtn2)
+        
+        inner_stat_layout_2.addWidget(self.canvas2)
+        inner_stat_layout_2.addWidget(self.date_combobox2)
+        inner_stat_layout_2.addLayout(hbox2)
+        inner_stat_layout_2.addWidget(self.homeBtn2)
+        inner_stat_layout_2.addWidget(self.quitBtn3)
+        
+        self.stat_1.setLayout(inner_stat_layout_1)
+        self.stat_2.setLayout(inner_stat_layout_2)
+        
+        
+        ##############################################################################
+        
+        # statdb_layout.addWidget(self.date_combobox)
+    
+        statdb_layout.addWidget(self.inner_Stack)
+        # statdb_layout.addLayout(hbox)
+        # statdb_layout.addWidget(self.homeBtn)
+        # statdb_layout.addWidget(self.quitBtn2)
         
         self.stat_db.setLayout(statdb_layout)
         
@@ -367,6 +422,51 @@ class MyWindow(QMainWindow):
         
     #     return correct_ratio, incorrect_ratio, date_col, today_postureType_cnt
     
+    def get_alldates(self):
+        # SQLite3 데이터베이스 연결
+        conn = sqlite3.connect('db.sqlite')
+
+        # 커서 생성
+        cursor = conn.cursor()
+        
+        alldates = cursor.execute('''
+                    SELECT DISTINCT timeymd
+                    FROM POSTURE  
+                                  ''')
+        alldates = cursor.fetchall()
+        alldates = [date[0] for date in alldates]
+        
+        print('alldates : ',alldates)
+        return alldates
+    
+    # 전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4
+    def get_onedaydata(self, whatdate):
+        # SQLite3 데이터베이스 연결
+        conn = sqlite3.connect('db.sqlite')
+
+        # 커서 생성
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+                SELECT 
+                SUM(CASE WHEN posturetype IN (0, 1, 2, 3, 4) THEN 1 ELSE 0 END) as totalcnt,
+                SUM(CASE WHEN posturetype IN (1, 2, 3, 4) THEN 1 ELSE 0 END) AS badcnt,
+                SUM(CASE WHEN posturetype=-1 THEN 1 ELSE 0 END) AS notin,
+                SUM(CASE WHEN posturetype=0 THEN 1 ELSE 0 END) AS correctpos,
+                SUM(CASE WHEN posturetype=1 THEN 1 ELSE 0 END) AS one,
+                SUM(CASE WHEN posturetype=2 THEN 1 ELSE 0 END) AS two,
+                SUM(CASE WHEN posturetype=3 THEN 1 ELSE 0 END) AS three,
+                SUM(CASE WHEN posturetype=4 THEN 1 ELSE 0 END) AS four
+                FROM POSTURE
+                WHERE timeymd = ?
+                ''', (whatdate,))
+        oneday = cursor.fetchall()
+        oneday = oneday[0]
+        
+        print('oneday : ', oneday)
+        return oneday
+        
+        
     
     def get_sevendays_db(self):
         # SQLite3 데이터베이스 연결
@@ -388,19 +488,14 @@ class MyWindow(QMainWindow):
                 timeymd,
                 SUM(CASE WHEN posturetype IN (0, 1, 2, 3, 4) THEN 1 ELSE 0 END) as totalcount,
                 SUM(CASE WHEN posturetype IN (1, 2, 3, 4) THEN 1 ELSE 0 END) AS badpos,
-                SUM(CASE WHEN posturetype=-1 THEN 1 ELSE 0 END) AS notin,
-                SUM(CASE WHEN posturetype=0 THEN 1 ELSE 0 END) AS correctpos,
-                SUM(CASE WHEN posturetype=1 THEN 1 ELSE 0 END) AS one,
-                SUM(CASE WHEN posturetype=2 THEN 1 ELSE 0 END) AS two,
-                SUM(CASE WHEN posturetype=3 THEN 1 ELSE 0 END) AS three,
-                SUM(CASE WHEN posturetype=4 THEN 1 ELSE 0 END) AS four
+                SUM(CASE WHEN posturetype=0 THEN 1 ELSE 0 END) AS correctpos
                 FROM POSTURE
                 WHERE timeymd >= ? AND timeymd <= ?
                 group by timeymd
                 ''', (sixdaybeforeDate, todayDate))
         
         # list - tuple 타입
-        data_label = ['date', 'total', 'badcount', '-1', '0', '1', '2', '3', '4']
+        # data_label = ['date', 'total', 'badcount', '0']
         sevendays = cursor.fetchall()
         print('db 데이터 : ',sevendays)
         print('db 데이터 : ',type(sevendays))
@@ -423,29 +518,29 @@ class MyWindow(QMainWindow):
         # 데이터 가공 : correct_ratio, incorrect_ratio, date_col, today_postureType_cnt
         correct_ratio = []
         incorrect_ratio = []
-        today_postureType_cnt = []
+        # today_postureType_cnt = []
         
         for i in range(len(data_date)):
             for j in range(len(sevendays)):
                 if(data_date[i] != sevendays[j][0]):
                     continue
                 else:
-                    correct_ratio.append(round((sevendays[j][4]/sevendays[j][1]), 2))
+                    correct_ratio.append(round((sevendays[j][3]/sevendays[j][1]), 2))
                     incorrect_ratio.append(round((sevendays[j][2]/sevendays[j][1]), 2))
                     break
             if len(correct_ratio) != (i+1):
                 correct_ratio.append(0)
                 incorrect_ratio.append(0)
                 
-        for i in range(3,9):
-            today_postureType_cnt.append(sevendays[-1][i])
+        # for i in range(3,9):
+        #     today_postureType_cnt.append(sevendays[-1][i])
         
         print('correct ratio : ', correct_ratio)
         print('incorrect ratio : ', incorrect_ratio)
-        print('today count : ',today_postureType_cnt)
+        # print('today count : ',today_postureType_cnt)
     
         
-        return date_label, correct_ratio, incorrect_ratio, today_postureType_cnt
+        return date_label, correct_ratio, incorrect_ratio
     
     
     def insert_data(self, ymd, hms, potype):
@@ -473,12 +568,15 @@ class MyWindow(QMainWindow):
         self.startBtn.clicked.connect(self.start)
         self.stopBtn.clicked.connect(self.stop)
         self.statisticBtn.clicked.connect(self.show_stat2)
+        # self.statisticBtn.clicked.connect(self.show_stat2)
         self.homeBtn.clicked.connect(self.show_webcam)
+        self.homeBtn2.clicked.connect(self.show_webcam)
         # self.nextBtn.clicked.connect(self.show_stat2)
-        self.lineBtn.clicked.connect(self.show_chart)
-        self.pieBtn.clicked.connect(self.show_chart)
+        self.lineBtn.clicked.connect(self.show_weekchart)
+        self.pieBtn.clicked.connect(self.show_daychart)
         self.quitBtn.clicked.connect(self.onExit2)
         self.quitBtn2.clicked.connect(self.onExit2)
+        self.quitBtn3.clicked.connect(self.onExit2)
 
         
     def show_webcam(self):
@@ -501,6 +599,7 @@ class MyWindow(QMainWindow):
     def show_stat2(self):
         self.Stack.setCurrentIndex(1)
         self.stop()
+        self.show_daychart()
         self.statisticBtn.setEnabled(False)
         self.startBtn.setEnabled(False)
         self.stopBtn.setEnabled(False)
@@ -508,27 +607,165 @@ class MyWindow(QMainWindow):
         print('###### statistic2 페이지')
         
         
-    def show_chart(self):
-         # 그래프 초기화
-        self.canvas.figure.clear()
+    def show_daychart(self):
+        self.inner_Stack.setCurrentIndex(0)
+        self.draw_daychart()
+        self.lineBtn.setEnabled(True)
+        self.pieBtn.setEnabled(False)  
+        print('일일 통계 페이지')
+    
+    def show_weekchart(self):
+        self.inner_Stack.setCurrentIndex(1)
+        self.draw_weekchart()
+        self.date_combobox2.setEnabled(False)
+        self.lineBtn.setEnabled(False)
+        self.pieBtn.setEnabled(True)
+        print('주간 통계 페이지')
         
+    # def show_chart(self):
+    #      # 그래프 초기화
+    #     self.canvas.figure.clear()
+        
+    #     # 한글 출력 설정
+    #     plt.rcParams['font.family'] ='Malgun Gothic'
+    #     plt.rcParams['axes.unicode_minus'] =False
+
+    #     # ComboBox에서 선택된 날짜 가져오기
+    #     selected_date = self.date_combobox.currentText()
+    #     oneday_data = self.get_onedaydata(selected_date)
+    #     print('통계페이지 상 oneday_data : ', oneday_data)
+        
+    #     graphLabel = selected_date + ':: 일일 자세 통계'
+        
+    #     axdb = self.canvas.figure.subplots(1,2)
+    #     self.canvas.figure.suptitle(graphLabel, fontsize=12, y=0.94)
+        
+    #     print('onedaydata 통계페이지 : ',oneday_data)
+    #     todaystat = []
+    #     todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
+    #     todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
+    #     print('통계 페이지상 todaystat : ', todaystat)
+    #     todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
+    #     todaystat_color = ['#87CEEB', '#ffcc99']
+        
+    #     axdb[0].bar(todaystat_label, todaystat, color=todaystat_color)
+        
+        
+    #     pie_labels = ['자리비움', '바른 자세', '거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
+    #     pie_colors = ['#D3D3D3', '#87CEEB', '#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
+    #     wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
+        
+    #     posturetype_cnt = oneday_data[2:]
+        
+    #     # 0이 아닌 타입만 파이차트에 출력
+    #     not_zero_label = [label for label, size in zip(pie_labels, posturetype_cnt) if size != 0]
+    #     not_zero_colors = [color for color, size in zip(pie_colors, posturetype_cnt) if size != 0]
+        
+    #     if posturetype_cnt.count(0)!=len(posturetype_cnt):
+    #         axdb[1].pie([size for size in posturetype_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
+    #                     startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
+            
+    #         axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
+        
+    #     self.lineBtn.setEnabled(True)
+    #     self.pieBtn.setEnabled(False)  
+    #     self.date_combobox.setEnabled(True)
+        
+    #     if self.sender()==self.lineBtn:
+            
+    #         self.canvas.figure.clear()
+    #         axdb = self.fig.add_subplot(111)
+            
+    #         graphLabel = '일주일 간 자세 비율 통계'
+            
+    #         # 꺾은 선 그래프
+    #         # self.axdb = self.canvas.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
+    #         axdb.plot(date_label, correct_ratio, marker='o', label='correct pose')
+    #         axdb.plot(date_label, incorrect_ratio, marker='o', label='incorrect pose')
+
+    #         # axdb.tick_params(axis='x', rotation=40)
+    #         axdb.legend()
+    #         axdb.set_title(graphLabel)
+            
+    #         self.lineBtn.setEnabled(False)
+    #         self.pieBtn.setEnabled(True) 
+    #         self.date_combobox.setEnabled(False) 
+            
+    #     if self.sender()==self.pieBtn:
+            
+    #         # ComboBox에서 선택된 날짜 가져오기
+    #         selected_date = self.date_combobox.currentText()
+    #         oneday_data = self.get_onedaydata(selected_date)
+    #         print('통계페이지 상 oneday_data : ', oneday_data)
+            
+            
+    #         self.canvas.figure.clear()
+    #         graphLabel = selected_date + ':: 일일 자세 통계'
+            
+    #         axdb = self.canvas.figure.subplots(1,2)
+    #         self.canvas.figure.suptitle(graphLabel, fontsize=12, y=0.94)
+            
+    #         print('onedaydata 통계페이지 : ',oneday_data)
+    #         todaystat = []
+    #         todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
+    #         todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
+    #         print('통계 페이지상 todaystat : ', todaystat)
+    #         todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
+    #         todaystat_color = ['#87CEEB', '#ffcc99']
+            
+    #         axdb[0].bar(todaystat_label, todaystat, color=todaystat_color)
+            
+            
+    #         pie_labels = ['자리비움', '바른 자세', '거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
+    #         pie_colors = ['#D3D3D3', '#87CEEB', '#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
+    #         wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
+            
+    #         posturetype_cnt = oneday_data[2:]
+            
+    #         # 0이 아닌 타입만 파이차트에 출력
+    #         not_zero_label = [label for label, size in zip(pie_labels, posturetype_cnt) if size != 0]
+    #         not_zero_colors = [color for color, size in zip(pie_colors, posturetype_cnt) if size != 0]
+            
+    #         if posturetype_cnt.count(0)!=len(posturetype_cnt):
+    #             axdb[1].pie([size for size in posturetype_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
+    #                         startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
+                
+    #             axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
+                
+    #         self.lineBtn.setEnabled(True)
+    #         self.pieBtn.setEnabled(False)   
+    #         self.date_combobox.setEnabled(True) 
+            
+    #         # # 0이 아닌 타입만 파이차트에 출력
+    #         # not_zero_label = [label for label, size in zip(pie_labels, today_postureType_cnt) if size != 0]
+    #         # not_zero_colors = [color for color, size in zip(pie_colors, today_postureType_cnt) if size != 0]
+            
+    #         # if today_postureType_cnt.count(0)!=len(today_postureType_cnt):
+    #         #     axdb[1].pie([size for size in today_postureType_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
+    #         #                 startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
+                
+    #         #     axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
+                
+    #         # self.lineBtn.setEnabled(True)
+    #         # self.pieBtn.setEnabled(False)     
+        
+    #     self.canvas.draw()
+        
+        
+    def draw_weekchart(self):
+         # 그래프 초기화
+        self.canvas2.figure.clear()
+                
         # 한글 출력 설정
         plt.rcParams['font.family'] ='Malgun Gothic'
         plt.rcParams['axes.unicode_minus'] =False
-        
-        # title 설정
-        date = QDateTime.currentDateTime()
-        todayDate = date.toString('yyyy.MM.dd')
-        graphLabel = todayDate + ':: 일일 자세 비율'
-        
 
-        axdb = self.fig.add_subplot(111)
-        date_label, correct_ratio, incorrect_ratio, today_postureType_cnt = self.get_sevendays_db()
+        date_label, correct_ratio, incorrect_ratio = self.get_sevendays_db()
         
         graphLabel = '일주일 간 자세 비율 통계'
             
         # 꺾은 선 그래프
-        # self.axdb = self.canvas.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
+        axdb = self.canvas2.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
         axdb.plot(date_label, correct_ratio, marker='o', label='correct pose')
         axdb.plot(date_label, incorrect_ratio, marker='o', label='incorrect pose')
 
@@ -536,62 +773,59 @@ class MyWindow(QMainWindow):
         axdb.legend()
         axdb.set_title(graphLabel)
         
-        self.lineBtn.setEnabled(False)
-        self.pieBtn.setEnabled(True)  
+        self.canvas2.draw()
         
-        if self.sender()==self.lineBtn:
-            
-            self.canvas.figure.clear()
-            axdb = self.fig.add_subplot(111)
-            
-            graphLabel = '일주일 간 자세 비율 통계'
-            
-            # 꺾은 선 그래프
-            # self.axdb = self.canvas.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
-            axdb.plot(date_label, correct_ratio, marker='o', label='correct pose')
-            axdb.plot(date_label, incorrect_ratio, marker='o', label='incorrect pose')
+        
+    def draw_daychart(self):
+         # 그래프 초기화
+         
+        self.canvas.figure.clear()
+        
+        # 한글 출력 설정
+        plt.rcParams['font.family'] ='Malgun Gothic'
+        plt.rcParams['axes.unicode_minus'] =False
 
-            # axdb.tick_params(axis='x', rotation=40)
-            axdb.legend()
-            axdb.set_title(graphLabel)
-            
-            self.lineBtn.setEnabled(False)
-            self.pieBtn.setEnabled(True)  
-            
-        if self.sender()==self.pieBtn:
-            
-            self.canvas.figure.clear()
-            graphLabel = todayDate + ':: 일일 자세 통계'
-            
-            axdb = self.canvas.figure.subplots(1,2)
-            self.canvas.figure.suptitle(graphLabel, fontsize=12, y=0.94)
-            
-            todaystat = []
-            todaystat.append(correct_ratio[-1])
-            todaystat.append(incorrect_ratio[-1])
-            todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
-            todaystat_color = ['#87CEEB', '#ffcc99']
-            
-            axdb[0].bar(todaystat_label, todaystat, color=todaystat_color)
-            
-            
-            pie_labels = ['자리비움', '바른 자세', '거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
-            pie_colors = ['#D3D3D3', '#87CEEB', '#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
-            wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
-            
-            # 0이 아닌 타입만 파이차트에 출력
-            not_zero_label = [label for label, size in zip(pie_labels, today_postureType_cnt) if size != 0]
-            not_zero_colors = [color for color, size in zip(pie_colors, today_postureType_cnt) if size != 0]
-            
-            if today_postureType_cnt.count(0)!=len(today_postureType_cnt):
-                axdb[1].pie([size for size in today_postureType_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
-                            startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
-                
-                axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
-                
-            self.lineBtn.setEnabled(True)
-            self.pieBtn.setEnabled(False)     
+        # ComboBox에서 선택된 날짜 가져오기
+        selected_date = self.date_combobox.currentText()
+        oneday_data = self.get_onedaydata(selected_date)
+        print('통계페이지 상 oneday_data : ', oneday_data)        
         
+        graphLabel = selected_date + ' :: 일일 자세 통계'
+            
+        # 일일 통계 그래프
+        axdb = self.canvas.figure.subplots(1,2)
+        self.canvas.figure.suptitle(graphLabel, fontsize=12, y=0.96)
+        
+        print('onedaydata 통계페이지 : ',oneday_data)
+        todaystat = []
+        todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
+        todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
+        print('통계 페이지상 todaystat : ', todaystat)
+        todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
+        todaystat_color = ['#87CEEB', '#ffcc99']
+        
+        axdb[0].bar(todaystat_label, todaystat, color=todaystat_color, width=0.7)
+        
+        
+        pie_labels = ['자리비움', '바른 자세', '거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
+        pie_colors = ['#D3D3D3', '#87CEEB', '#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
+        wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
+        
+        posturetype_cnt = oneday_data[2:]
+        
+        # 0이 아닌 타입만 파이차트에 출력
+        not_zero_label = [label for label, size in zip(pie_labels, posturetype_cnt) if size != 0]
+        not_zero_colors = [color for color, size in zip(pie_colors, posturetype_cnt) if size != 0]
+        
+        # 범례에 사용할 원 모양의 마커 생성
+        legend_handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=not_zero_colors[i].format(i), markersize=10) for i in range(len(not_zero_label))]
+        
+        if posturetype_cnt.count(0)!=len(posturetype_cnt):
+            axdb[1].pie([size for size in posturetype_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
+                        startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
+            
+            # axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
+            axdb[1].legend(legend_handles, not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
         
         self.canvas.draw()
         
