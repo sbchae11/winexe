@@ -49,6 +49,7 @@ class MyWindow(QMainWindow):
         super().__init__()
         # self.setupUi(self)
         self.running = False
+        self.first = True
         self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
         #현재 작업 디렉토리를 변경
         os.chdir(self.program_directory)
@@ -293,7 +294,9 @@ class MyWindow(QMainWindow):
         #     date_list.sort(reverse=True)
         #     self.date_combobox.addItems(date_list)
         # self.date_combobox.currentIndexChanged.connect(self.show_daychart)
-        self.update_combobox()
+        if self.first:
+            self.update_combobox()
+            self.first = False
         
         
         
@@ -871,6 +874,7 @@ class MyWindow(QMainWindow):
         conn.close()
         
         self.date_combobox.clear()
+        self.first = True
         
         
         
