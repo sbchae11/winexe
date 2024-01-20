@@ -13,4 +13,4 @@ pyqt5
 pyautogui
 pyqt5designer
 win10toast
-pyinstaller
+pyinstaller==5.13.2
