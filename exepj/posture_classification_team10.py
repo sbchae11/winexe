@@ -171,10 +171,9 @@ class MyWindow(QMainWindow):
         # 메뉴바 버튼
         alarmCheck = QAction('자세 알람 사용', self, checkable=True)
         alarmCheck.setChecked(True)
-        
-        exitAction = QAction('Exit', self)
-        
-        dbToxlsx = QAction('export data to xlsx file', self)
+        exitAction = QAction('프로그램 종료', self)
+        dbToxlsx = QAction('엑셀 파일로 저장하기', self)
+        clearDB = QAction('DB 초기화', self)
         
         
         # 메뉴바
@@ -185,6 +184,7 @@ class MyWindow(QMainWindow):
         
         filemenu.addAction(alarmCheck)
         filemenu.addAction(dbToxlsx)
+        filemenu.addAction(clearDB)
         
         # 선(구분선) 추가
         filemenu.addSeparator()
@@ -195,6 +195,8 @@ class MyWindow(QMainWindow):
         alarmCheck.triggered.connect(self.using_alarm)
         
         dbToxlsx.triggered.connect(self.save_xlsx)
+        
+        clearDB.triggered.connect(self.delete_data)
         
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
@@ -216,7 +218,7 @@ class MyWindow(QMainWindow):
                                 timeymd TEXT NOT NULL, 
                                 timehms TEXT NOT NULL, 
                                 posturetype INTEGER NOT NULL
-                                )
+                                );
                             ''')
         
         # 변경사항 저장
@@ -293,10 +295,11 @@ class MyWindow(QMainWindow):
         self.date_combobox = QComboBox(self)
         self.date_combobox2 = QComboBox(self)
         date_list = self.get_alldates()
-        self.date_combobox.addItem(date_list.pop())
+        if date_list != []:
+            self.date_combobox.addItem(date_list.pop())
         # self.date_combobox2.addItem(date_list.pop())
-        date_list.sort(reverse=True)
-        self.date_combobox.addItems(date_list)
+            date_list.sort(reverse=True)
+            self.date_combobox.addItems(date_list)
         # self.date_combobox2.addItems(date_list)
         self.date_combobox.currentIndexChanged.connect(self.show_daychart)
         # self.date_combobox.addItems(date_list)
@@ -390,11 +393,17 @@ class MyWindow(QMainWindow):
                 SUM(CASE WHEN posturetype=3 THEN 1 ELSE 0 END) AS three,
                 SUM(CASE WHEN posturetype=4 THEN 1 ELSE 0 END) AS four
                 FROM POSTURE
-                WHERE timeymd = ?
+                WHERE timeymd = ?;
                 ''', (whatdate,))
         oneday = cursor.fetchall()
-        oneday = oneday[0]
+        oneday = list(oneday[0])
         
+        if None in oneday:
+            for i in range(len(oneday)):
+                if oneday[i]==None:
+                    oneday[i] = 0
+        
+        print('oneday : ', type(oneday))
         print('oneday : ', oneday)
         return oneday
         
@@ -423,17 +432,17 @@ class MyWindow(QMainWindow):
                 SUM(CASE WHEN posturetype=0 THEN 1 ELSE 0 END) AS correctpos
                 FROM POSTURE
                 WHERE timeymd >= ? AND timeymd <= ?
-                group by timeymd
+                group by timeymd;
                 ''', (sixdaybeforeDate, todayDate))
         
         # list - tuple 타입
         # data_label = ['date', 'total', 'badcount', '0']
         sevendays = cursor.fetchall()
-        print('db 데이터 : ',sevendays)
-        print('db 데이터 : ',type(sevendays))
-        print('db 데이터 : ',sevendays[1])
-        print('db 데이터 : ',type(sevendays[1]))
-        print('db 데이터 : ',sevendays[1][0])
+        # print('db 데이터 : ',sevendays)
+        # print('db 데이터 : ',type(sevendays))
+        # print('db 데이터 : ',sevendays[1])
+        # print('db 데이터 : ',type(sevendays[1]))
+        # print('db 데이터 : ',sevendays[1][0])
         
         conn.commit()
         
@@ -601,8 +610,12 @@ class MyWindow(QMainWindow):
         
         print('onedaydata 통계페이지 : ',oneday_data)
         todaystat = []
-        todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
-        todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
+        if(oneday_data[0]!=0):
+            todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
+            todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
+        else:
+            todaystat.append(0)
+            todaystat.append(0)
         print('통계 페이지상 todaystat : ', todaystat)
         todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
         todaystat_color = ['#87CEEB', '#ffcc99']
@@ -823,7 +836,29 @@ class MyWindow(QMainWindow):
        
     # 데이터 초기화    
     def delete_data(self):
-        os.remove(self.data_path)
+        # SQLite 연결
+        conn = sqlite3.connect('db.sqlite')
+        cursor = conn.cursor()
+
+        # 테이블 삭제
+        cursor.execute("DROP TABLE IF EXISTS POSTURE;")
+        
+        # 테이블 생성 쿼리 실행
+        cursor.execute('''
+                            CREATE table IF NOT EXISTS posture(
+                                timeymd TEXT NOT NULL, 
+                                timehms TEXT NOT NULL, 
+                                posturetype INTEGER NOT NULL
+                                );
+                            ''')
+        
+        # 변경사항 저장
+        conn.commit()
+
+        # 연결 종료
+        conn.close()
+        
+        
         
     def using_alarm(self, checked):
         if checked:
