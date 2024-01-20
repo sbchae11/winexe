@@ -1,21 +1,6 @@
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import sys
-
-# import xgboost.sklearn
-# import scipy.special._ufuncs_cxx
-# import scipy.linalg.cython_blas
-# import scipy.linalg.cython_lapack
-# import scipy.integrate
-# import scipy.integrate.odepack
-# import scipy.integrate._odepack
-# import scipy.integrate.quadpack
-# import scipy.integrate._quadpack
-# import scipy.integrate._ode
-# import scipy.integrate.vode
-# import scipy.integrate._dop
-# import scipy.integrate.lsoda
-
 import os
 import cv2
 import threading
@@ -64,18 +49,18 @@ class MyWindow(QMainWindow):
         super().__init__()
         # self.setupUi(self)
         self.running = False
-        program_directory = os.path.dirname(os.path.abspath(__file__))
+        self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
         #현재 작업 디렉토리를 변경
-        os.chdir(program_directory)
+        os.chdir(self.program_directory)
         # self.script_directory = os.path.dirname(os.path.abspath(__file__))
         # model_path = os.path.join(self.script_directory, 'pose_classification_model.pkl')
-        self.model = joblib.load('pose_classification_model.pkl') 
+        self.model = joblib.load(self.program_directory + 'pose_classification_model.pkl') 
         print('모델 로딩 완료')
         # db table 준비
         self.db_setting()
         # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
-        self.ready_save() # 데이터프레임 준비
-        self.setting_file() # csv파일 준비
+        # self.ready_save() # 데이터프레임 준비
+        # self.setting_file() # csv파일 준비
         self.usingAlarm = True
         self.posture_okay = []
         
@@ -97,16 +82,14 @@ class MyWindow(QMainWindow):
         self.statisticBtn.setEnabled(True)
         self.homeBtn.setEnabled(False)
         
-        # 모듈 버전
-        print(sqlite3.version)
-        print(sqlite3.sqlite_version)
+        self.update_time()
         
         
         self.show()
         
         app.aboutToQuit.connect(self.onExit)
         
-        self.update_time()
+        
         
     ##############################################################    
     
@@ -116,7 +99,7 @@ class MyWindow(QMainWindow):
         self.setWindowTitle("Posture Defender(made by.team10)")
         # 윈도우 로고
         # logo_path = os.path.join(self.script_directory, 'logo_page.png')
-        self.setWindowIcon(QIcon('logo_page.png')) 
+        self.setWindowIcon(QIcon(self.program_directory + 'logo_page.png')) 
         
         screen = app.primaryScreen()
         # print(screen.availableGeometry())
@@ -124,8 +107,8 @@ class MyWindow(QMainWindow):
         # print(screen.availableGeometry().height())
         
         # (x, y, width, height)
-        # self.setGeometry(screen.availableGeometry().width()-650, screen.availableGeometry().height()-500, 650, 500)
-        self.setGeometry(0, 100, 650, 500)
+        self.setGeometry(screen.availableGeometry().width(), screen.availableGeometry().height()-500, 650, 500)
+        # self.setGeometry(0, 100, 650, 500)
         self.setFixedSize(650, 500)
     
     def ui_mainLayout(self):
@@ -142,15 +125,16 @@ class MyWindow(QMainWindow):
         self.webLabel = QLabel("재생 버튼을 눌러주세요")
         self.webLabel.setAlignment(QtCore.Qt.AlignCenter)
         
-        # # cor/incor 표시 라벨
-        # self.correctLabel = QLabel('X')
+        # cor/incor 표시 라벨
+        self.correctLabel = QLabel()
         # self.correctLabel.move(200,200)
         
         # 레이아웃
         main_layout = QVBoxLayout()
         
         main_layout.addWidget(self.webLabel)
-        # main_layout.addWidget(self.correctLabel)
+        main_layout.addWidget(self.correctLabel)
+        self.correctLabel.setVisible(False)
         
         # 행 - 버튼
         hbox_btn = QHBoxLayout()
@@ -176,6 +160,11 @@ class MyWindow(QMainWindow):
         clearDB = QAction('DB 초기화', self)
         
         
+        # credit
+        # creditMenu = QMenu('Credit', self)
+
+        
+        
         # 메뉴바
         menubar = self.menuBar()
         menubar.setNativeMenuBar(False)
@@ -185,6 +174,10 @@ class MyWindow(QMainWindow):
         filemenu.addAction(alarmCheck)
         filemenu.addAction(dbToxlsx)
         filemenu.addAction(clearDB)
+        creditMenu = filemenu.addMenu('credit')
+        
+        creditto = QAction('| made by.aivle_team10 | team10 구성원에게 공유받은 모든 이들에게 사용을 허가합니다 | 비관계자 재배포 금지 |', self)
+        creditMenu.addAction(creditto)
         
         # 선(구분선) 추가
         filemenu.addSeparator()
@@ -252,19 +245,19 @@ class MyWindow(QMainWindow):
         self.setCentralWidget(self.Stack)
         
         
-    def ready_save(self):
-        self.columns = ['timeymd', 'timehms', 'posturetype']
-        # 새로 추가할 데이터
-        self.data = pd.DataFrame(columns=self.columns)
+    # def ready_save(self):
+    #     self.columns = ['timeymd', 'timehms', 'posturetype']
+    #     # 새로 추가할 데이터
+    #     self.data = pd.DataFrame(columns=self.columns)
         
-    def setting_file(self):
-        # self.data_path = os.path.join(self.script_directory, 'posture_data.csv')
-        try:
-            # 기존 데이터
-            self.saveData = pd.read_csv('posture_data.csv')
-        except FileNotFoundError:
-            self.data.to_csv('posture_data.csv', index=False)
-            self.saveData = pd.read_csv('posture_data.csv')
+    # def setting_file(self):
+    #     # self.data_path = os.path.join(self.script_directory, 'posture_data.csv')
+    #     try:
+    #         # 기존 데이터
+    #         self.saveData = pd.read_csv('posture_data.csv')
+    #     except FileNotFoundError:
+    #         self.data.to_csv('posture_data.csv', index=False)
+    #         self.saveData = pd.read_csv('posture_data.csv')
         
 
         
@@ -294,16 +287,13 @@ class MyWindow(QMainWindow):
         
         self.date_combobox = QComboBox(self)
         self.date_combobox2 = QComboBox(self)
-        date_list = self.get_alldates()
-        if date_list != []:
-            self.date_combobox.addItem(date_list.pop())
-        # self.date_combobox2.addItem(date_list.pop())
-            date_list.sort(reverse=True)
-            self.date_combobox.addItems(date_list)
-        # self.date_combobox2.addItems(date_list)
-        self.date_combobox.currentIndexChanged.connect(self.show_daychart)
-        # self.date_combobox.addItems(date_list)
-        # self.date_combobox.currentIndexChanged.connect(self.show_chart)
+        # date_list = self.get_alldates()
+        # if date_list != []:
+        #     self.date_combobox.addItem(date_list.pop())
+        #     date_list.sort(reverse=True)
+        #     self.date_combobox.addItems(date_list)
+        # self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+        self.update_combobox()
         
         
         
@@ -355,6 +345,16 @@ class MyWindow(QMainWindow):
         
         self.stat_db.setLayout(statdb_layout)
         
+    def update_combobox(self):
+        print('combobox count : ', self.date_combobox.count())
+        if self.date_combobox.count()==0:
+            date_list = self.get_alldates()
+            if date_list != []:
+                self.date_combobox.addItem(date_list.pop())
+                date_list.sort(reverse=True)
+                self.date_combobox.addItems(date_list)
+            self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+        
     
     
     def get_alldates(self):
@@ -369,6 +369,8 @@ class MyWindow(QMainWindow):
                     FROM POSTURE  
                                   ''')
         alldates = cursor.fetchall()
+        conn.commit()
+        conn.close()
         alldates = [date[0] for date in alldates]
         
         print('alldates : ',alldates)
@@ -376,6 +378,7 @@ class MyWindow(QMainWindow):
     
     # 전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4
     def get_onedaydata(self, whatdate):
+        self.update_combobox()
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
 
@@ -396,6 +399,8 @@ class MyWindow(QMainWindow):
                 WHERE timeymd = ?;
                 ''', (whatdate,))
         oneday = cursor.fetchall()
+        conn.commit()
+        conn.close()
         oneday = list(oneday[0])
         
         if None in oneday:
@@ -508,7 +513,7 @@ class MyWindow(QMainWindow):
     def layout_connection(self):
         self.startBtn.clicked.connect(self.start)
         self.stopBtn.clicked.connect(self.stop)
-        self.statisticBtn.clicked.connect(self.show_stat2)
+        self.statisticBtn.clicked.connect(self.show_daychart)
         # self.statisticBtn.clicked.connect(self.show_stat2)
         self.homeBtn.clicked.connect(self.show_webcam)
         self.homeBtn2.clicked.connect(self.show_webcam)
@@ -522,6 +527,7 @@ class MyWindow(QMainWindow):
         
     def show_webcam(self):
         self.Stack.setCurrentIndex(0)
+        self.correctLabel.setVisible(False)
         self.statisticBtn.setEnabled(True)
         self.startBtn.setEnabled(True)
         self.stopBtn.setEnabled(True)
@@ -549,9 +555,12 @@ class MyWindow(QMainWindow):
         
         
     def show_daychart(self):
+        self.Stack.setCurrentIndex(1)
         self.inner_Stack.setCurrentIndex(0)
+        self.stop()
         self.draw_daychart()
         self.lineBtn.setEnabled(True)
+        self.homeBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
         print('일일 통계 페이지')
     
@@ -618,7 +627,7 @@ class MyWindow(QMainWindow):
             todaystat.append(0)
         print('통계 페이지상 todaystat : ', todaystat)
         todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
-        todaystat_color = ['#87CEEB', '#ffcc99']
+        todaystat_color = ['#87CEEB', '#ff9999']
         
         axdb[0].bar(todaystat_label, todaystat, color=todaystat_color, width=0.7)
         
@@ -754,6 +763,7 @@ class MyWindow(QMainWindow):
                         print('class name type : ', type(class_name))
                         
                         # self.insert_data()
+                        self.show_corincor_color(int(class_name))
                         
                         dataDate = self.datetime.split(',')
                         print(dataDate)
@@ -762,9 +772,9 @@ class MyWindow(QMainWindow):
                         
                         dataDate.append(class_name)
                         # {ymd, hms, posturetype} 데이터 저장
-                        perData = dict(zip(self.columns, dataDate))
-                        perData = pd.DataFrame(perData, index=[0])
-                        self.data = pd.concat([self.data,perData])
+                        # perData = dict(zip(self.columns, dataDate))
+                        # perData = pd.DataFrame(perData, index=[0])
+                        # self.data = pd.concat([self.data,perData])
                         self.update_time()
                         
                         self.posture_okay.append(class_name)
@@ -794,11 +804,12 @@ class MyWindow(QMainWindow):
         self.cap.release()
         print('###### thread end')
         # waiting_path = os.path.join(self.script_directory, 'su_final.png')
-        self.webLabel.setPixmap(QtGui.QPixmap('su_final.png'))
+        self.webLabel.setPixmap(QtGui.QPixmap(self.program_directory + 'su_final.png'))
         
     def stop(self):
         print('press stop')
         self.running = False
+        self.label_visibility()
         self.startBtn.setEnabled(True)
         print('###### stop')
         
@@ -809,6 +820,7 @@ class MyWindow(QMainWindow):
         in_use = ret
         if in_use:
             self.running = True
+            self.label_visibility()
             th = threading.Thread(target=self.run)
             th.start()
             self.startBtn.setEnabled(False)
@@ -820,16 +832,16 @@ class MyWindow(QMainWindow):
         
     def onExit(self):
         print('###### exit')
-        self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
-        self.saveData.to_csv('posture_data.csv', index=False)
-        print('###### file saved')
+        # self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
+        # self.saveData.to_csv('posture_data.csv', index=False)
+        # print('###### file saved')
         self.stop()
         
     def onExit2(self):
         print('###### exit2')
-        self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
-        self.saveData.to_csv('posture_data.csv', index=False)
-        print('###### file saved')
+        # self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
+        # self.saveData.to_csv('posture_data.csv', index=False)
+        # print('###### file saved')
         self.stop()
         sys.exit()
        
@@ -858,6 +870,8 @@ class MyWindow(QMainWindow):
         # 연결 종료
         conn.close()
         
+        self.date_combobox.clear()
+        
         
         
     def using_alarm(self, checked):
@@ -871,7 +885,7 @@ class MyWindow(QMainWindow):
         # ico_path = os.path.join(self.script_directory, 'logo_page.ico')
         toast.show_toast("!!! 자세 경고 !!!", # 제목
                 "자세가 올바르지 않습니다. \n 건강을 위해 바른 자세를 취해주세요.", # 내용
-                icon_path='logo_page.ico', # icon 위치
+                icon_path=self.program_directory + 'logo_page.ico', # icon 위치
                 duration=3)
         
     # def stretching_alarm(self):
@@ -904,8 +918,22 @@ class MyWindow(QMainWindow):
         except Exception as e:
             print(f"Error: {e}")
 
-        
         return
+    
+    def label_visibility(self):
+        # QLabel의 visibility 속성을 토글
+        self.correctLabel.setVisible(not self.correctLabel.isVisible())
+    
+    def show_corincor_color(self, class_name):
+        if class_name in [1,2,3,4]:
+            self.correctLabel.setStyleSheet("color: red;"
+                               "background-color: #ff9999")
+        elif class_name == -1:
+            self.correctLabel.setStyleSheet("color: gray;"
+                               "background-color: #D3D3D3")
+        elif class_name == 0:
+            self.correctLabel.setStyleSheet("color: blue;"
+                               "background-color: #87CEEB")
         
 
         
