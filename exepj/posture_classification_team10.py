@@ -11,6 +11,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 from PyQt5.QtCore import Qt, QDateTime
+from PyQt5.QtWidgets import QApplication
 
 import sqlite3
 import csv # 추가할까말까
@@ -39,6 +40,12 @@ class MyWindow(QMainWindow):
         self.first = True       # 처음 실행ㅇ..음 수정 필요
         self.usingAlarm = True  # 알람 사용/미사용
         self.posture_okay = []  # 자세 판단 데이터
+        self.th = None          # thread
+        self.selected_date = ''
+        
+        #######################
+        # 디버깅용
+        self.iii = 0
         
         # 프로그램 경로
         self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
@@ -303,14 +310,29 @@ class MyWindow(QMainWindow):
                 self.date_combobox.addItem(date_list.pop())
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
-        else :
-            print('수정중..')
+        else : # combobox가 비어있지 않은 경우
+            date_list = self.get_alldates()
+            if self.date_combobox.count() < len(date_list): # combobox가 최신 데이터가 아닌 경우
+                self.date_combobox.clear()
+                self.date_combobox.addItem(date_list.pop())
+                date_list.sort(reverse=True)
+                self.date_combobox.addItems(date_list)
+            # self.date_combobox.clear()
+            # print('수정중..')
             # combobox가 비어있지 않으나 데이터는 최신이 아닐때에 대한 코드
             
             # if self.first:
             #     # 이거 때문에 주르륵 실행되는 걸지도..
-            # self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+        print('######################### combo update : ', self.iii)
+        self.iii += 1
+        self.date_combobox.currentIndexChanged.connect(self.connect_to_selected_date)
             # print("################################# 콤보박스 업데이트")
+            
+            
+    def connect_to_selected_date(self):
+        self.selected_date = self.date_combobox.currentText()
+        
+        
         
     ############################################################################## (combobox용) unique 날짜 데이터 조회
     # return : [unique 날짜들]
@@ -334,6 +356,9 @@ class MyWindow(QMainWindow):
         
         # list로 변환
         alldates = [date[0] for date in alldates]   
+        
+        print('$$$$$$$$$$$$$ alldatas : ',self.iii)
+        self.iii += 1
         
         return alldates
     
@@ -374,6 +399,9 @@ class MyWindow(QMainWindow):
             for i in range(len(oneday)):
                 if oneday[i]==None:
                     oneday[i] = 0
+                    
+        print('************** one day : ',self.iii)
+        self.iii += 1
         
         return oneday
         
@@ -428,14 +456,21 @@ class MyWindow(QMainWindow):
             for j in range(len(sevendays)):
                 if(data_date[i] != sevendays[j][0]):
                     continue
-                else: # 분모가 0일때 예외처리 추가 안해도 되나
-                    correct_ratio.append(round((sevendays[j][3]/sevendays[j][1]), 2))
-                    incorrect_ratio.append(round((sevendays[j][2]/sevendays[j][1]), 2))
+                else:
+                    if sevendays[j][1] == 0:
+                        correct_ratio.append(0)
+                        incorrect_ratio.append(0)
+                    else:
+                        correct_ratio.append(round((sevendays[j][3]/sevendays[j][1]), 2))
+                        incorrect_ratio.append(round((sevendays[j][2]/sevendays[j][1]), 2))
                     break
             # 해당 날짜에 데이터가 없는 경우 0으로 치환
             if len(correct_ratio) != (i+1):
                 correct_ratio.append(0)
                 incorrect_ratio.append(0)
+                
+        print('((((((((((((((((())))))))))))))))) sevendays : ', self.iii)
+        self.iii += 1
 
         return date_label, correct_ratio, incorrect_ratio
     
@@ -459,7 +494,7 @@ class MyWindow(QMainWindow):
     ################################################################################################ 레이아웃 함수 연결
     def layout_connection(self):
         # webcam 페이지
-        self.startBtn.clicked.connect(self.start)
+        self.startBtn.clicked.connect(self.startfunc)
         self.stopBtn.clicked.connect(self.stop)
         self.statisticBtn.clicked.connect(self.show_daychart)
         self.quitBtn.clicked.connect(self.onExit2)
@@ -479,18 +514,28 @@ class MyWindow(QMainWindow):
     def show_webcam(self):
         self.Stack.setCurrentIndex(0)
         self.correctLabel.setVisible(False)
-        print('###### webcam 페이지')
+        print('###### webcam 페이지 : ', self.iii)
+        self.iii += 1
         
         
     ######################################################################################## 일일 통계 페이지 출력 함수
     def show_daychart(self):
+        print('@@@@@@@@@@@@@@@@@ show daychart 시작 : ', self.iii)
+        self.iii += 1
+        if self.running:
+            self.stop()   # 페이지 이동 시 thread 종료
         self.Stack.setCurrentIndex(1)
         self.inner_Stack.setCurrentIndex(0)
-        self.stop()                             # 페이지 이동 시 thread 종료
+        # self.working = True
+        
+        # # 이벤트 루프 처리
+        # QApplication.processEvents()
+        
         self.draw_daychart()                    # 일일 그래프 출력
         self.lineBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
-        print('일일 통계 페이지')
+        print('@@@@@@@@@@@@@@@@@@@@@ show day chart 종료 : ', self.iii)
+        self.iii += 1
         
     
     ######################################################################################### 주간 통계 페이지 출력 함수
@@ -500,7 +545,8 @@ class MyWindow(QMainWindow):
         self.date_combobox2.setEnabled(False)
         self.lineBtn.setEnabled(False)
         self.pieBtn.setEnabled(True)
-        print('주간 통계 페이지')
+        print('주간 통계 페이지 : ', self.iii)
+        self.iii += 1
 
     
     ############################################################################################# 주간 그래프 생성 함수
@@ -526,26 +572,40 @@ class MyWindow(QMainWindow):
         axdb.legend()
         axdb.set_title(graphLabel)
         
+        print('draw weekchart : ', self.iii)
+        self.iii+=1
+        
         self.weekCanvas.draw()
         
         
     ############################################################################################# 일일 그래프 생성 함수
     def draw_daychart(self):
+
+        print('&&&&&&&&&& working start')
+        print("#########################################")
+        for thread in threading.enumerate(): 
+            print('***', thread.name)
+        print("#########################################")
+        
+        
         # 그래프 초기화
         self.canvas.figure.clear()
+        
+        print('daily front : ', self.iii)
+        self.iii+=1
         
         # 한글 출력 설정
         plt.rcParams['font.family'] ='Malgun Gothic'
         plt.rcParams['axes.unicode_minus'] =False
 
         # ComboBox에서 선택된 날짜 가져오기
-        # self.update_combobox()
-        selected_date = self.date_combobox.currentText()
+        self.update_combobox()
+        # self.selected_date = self.date_combobox.currentText()
         # 일일 데이터 : [전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4]
-        oneday_data = self.get_onedaydata(selected_date)
+        oneday_data = self.get_onedaydata(self.selected_date)
 
         # 그래프 title        
-        graphLabel = selected_date + ' :: 일일 자세 통계'
+        graphLabel = self.selected_date + ' :: 일일 자세 통계'
             
         # 일일 통계 그래프
         axdb = self.canvas.figure.subplots(1,2)
@@ -592,6 +652,13 @@ class MyWindow(QMainWindow):
         
         self.canvas.draw()
         
+        print('daily end : ', self.iii)
+        self.iii += 1
+        
+
+        
+        print("&&&&&&&&&&&&&&& working done")
+            
 
     ###################################################################################################### 모델 동작부
     def run(self):    
@@ -740,14 +807,17 @@ class MyWindow(QMainWindow):
     ############################################################################################ 정지 버튼 이벤트 함수
     def stop(self):
         print('press stop')
+        print("stop : ", self.iii)
+        self.iii +=1
         self.running = False                        # thread 종료
         self.correctLabel.setVisible(False)         # 사용자 피드백 label 숨김
+        self.th.join()                              # self.th가 종료될 때까지 대기
         self.startBtn.setEnabled(True)
         print('###### stop')
         
         
     ############################################################################################ 시작 버튼 이벤트 함수
-    def start(self):
+    def startfunc(self):
         print('press start')
         self.cap = cv2.VideoCapture(0)
         ret, frame = self.cap.read()
@@ -757,8 +827,8 @@ class MyWindow(QMainWindow):
             self.running = True
             self.correctLabel.setVisible(True)
             # thread 시작
-            th = threading.Thread(target=self.run)
-            th.start()
+            self.th = threading.Thread(target=self.run)
+            self.th.start()
             # thread 중복 시작 방지
             self.startBtn.setEnabled(False)
             print('###### start')
@@ -771,13 +841,15 @@ class MyWindow(QMainWindow):
     ######################################################################################## 프로그램 종료 이벤트 함수
     def onExit(self):
         print('###### exit')
-        self.stop()
+        if self.running:
+            self.stop()
         
         
     ######################################################################################### 프로그램 종료 이벤트 함수   
     def onExit2(self):
         print('###### exit2')
-        self.stop()
+        if self.running:
+            self.stop()
         sys.exit()
        
        
@@ -807,7 +879,25 @@ class MyWindow(QMainWindow):
         
         # combobox 데이터 초기화
         self.date_combobox.clear()
+        print('delete data : ', self.iii)
+        self.iii +=1
         # self.first = True 쓸지 말지 고민좀..
+    
+    # def delete_data(self):
+    #     file_path = self.program_directory + 'db.sqlite'
+    #     try:
+    #         os.remove(file_path)
+    #         print(f"File '{file_path}' deleted successfully.")
+    #     except Exception as e:
+    #         print(f"Error deleting file '{file_path}': {e}")
+        
+    #     # combobox 데이터 초기화
+    #     self.date_combobox.clear()
+    #     self.db_setting()
+        
+    #     print('delete data : ', self.iii)
+    #     self.iii +=1
+    #     # self.first = True 쓸지 말지 고민좀..
         
         
     ################################################################################### 알람 사용 checkbox 이벤트 함수
@@ -834,7 +924,7 @@ class MyWindow(QMainWindow):
     
     
     ########################################################################################## export xlsx 이벤트 함수
-    # 작동을 안하는데 원인규명 필요
+    # exe파일로 묶으면 작동을 안함
     def save_xlsx(self):
         options = QFileDialog.Options()
         
