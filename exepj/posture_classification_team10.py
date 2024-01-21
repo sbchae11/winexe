@@ -8,13 +8,12 @@ import threading
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import QtCore
-from PyQt5 import uic
 from PyQt5 import QtGui
 
-from PyQt5.QtCore import QDate, QTime, Qt, QDateTime
+from PyQt5.QtCore import Qt, QDateTime
 
 import sqlite3
-import csv
+import csv # 추가할까말까
 
 import mediapipe as mp
 import joblib
@@ -31,114 +30,101 @@ from matplotlib.figure import Figure
 
 
 
-
-
-
-
-
-# def resource_path(relative_path):
-#     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))    
-#     return os.path.join(base_path, relative_path)
-
-# form = resource_path('main.ui')
-# form_class = uic.loadUiType(form)[0]
-
 # MyWindow(QMainWindow, form_class)
 class MyWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        # self.setupUi(self)
-        self.running = False
-        self.first = True
+
+        self.running = False    # thread 실행/종료
+        self.first = True       # 처음 실행ㅇ..음 수정 필요
+        self.usingAlarm = True  # 알람 사용/미사용
+        self.posture_okay = []  # 자세 판단 데이터
+        
+        # 프로그램 경로
         self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
+        
         #현재 작업 디렉토리를 변경
         os.chdir(self.program_directory)
-        # self.script_directory = os.path.dirname(os.path.abspath(__file__))
-        # model_path = os.path.join(self.script_directory, 'pose_classification_model.pkl')
+        
+        # 모델 불러오기
         self.model = joblib.load(self.program_directory + 'pose_classification_model.pkl') 
-        print('모델 로딩 완료')
-        # db table 준비
+        
+        # db 준비
         self.db_setting()
-        # self.stretching_model = joblib.load('pose_classification_model_stretch_final.pkl') 
-        # self.ready_save() # 데이터프레임 준비
-        # self.setting_file() # csv파일 준비
-        self.usingAlarm = True
-        self.posture_okay = []
+
+ 
         
         v_layout = QVBoxLayout()
         
-        self.ui_mainWindow()
         
-        self.stack_layout()
-        # self.ui_statistic()
-        self.ui_statistic_db()
-        self.ui_mainLayout()
-        self.layout_connection()
-        self.ui_menu()
+        self.ui_mainWindow()        # 프로그램 창 관련 설정
+        self.stack_layout()         # outer stack layout
+        self.ui_statistic_db()      # db를 사용한 통계 페이지
+        self.ui_mainLayout()        # main 페이지 ui
+        self.layout_connection()    # ui와 함수 간 연결
+        self.ui_menu()              # 메뉴바 
     
         v_layout.addWidget(self.Stack)
-        
-        
         self.setLayout(v_layout)
-        self.statisticBtn.setEnabled(True)
-        self.homeBtn.setEnabled(False)
         
-        self.update_time()
-        
+        self.update_time()          # 상태표시줄 시간 출력
+        self.update_combobox()
         
         self.show()
         
-        app.aboutToQuit.connect(self.onExit)
+        app.aboutToQuit.connect(self.onExit) # 종료 시 onExit
         
         
         
-    ##############################################################    
+          
+    ################################################################################################################
+    ################################################################################################################
     
-        
+    
+    
+    
+    ############################################################################################ 프로그램 창 관련 설정
     def ui_mainWindow(self):
         # 윈도우 타이틀
-        self.setWindowTitle("Posture Defender(made by.team10)")
+        self.setWindowTitle("Posture Defender ( made by.team10 )")
         # 윈도우 로고
-        # logo_path = os.path.join(self.script_directory, 'logo_page.png')
         self.setWindowIcon(QIcon(self.program_directory + 'logo_page.png')) 
         
+        # 현재 모니터 객체에 접근
         screen = app.primaryScreen()
-        # print(screen.availableGeometry())
-        # print(screen.availableGeometry().width())
-        # print(screen.availableGeometry().height())
+        # (x, y, width, height) 프로그램 실행 시 위치 고정
+        self.setGeometry(0, screen.availableGeometry().height()-500, 650, 500)
         
-        # (x, y, width, height)
-        self.setGeometry(screen.availableGeometry().width(), screen.availableGeometry().height()-500, 650, 500)
-        # self.setGeometry(0, 100, 650, 500)
+        # 프로그램 창 크기 고정
         self.setFixedSize(650, 500)
-    
-    def ui_mainLayout(self):
-        # 중앙 레이아웃 위젯
-        # self.setCentralWidget(self.Stack)
         
-        # 버튼
+    
+    ########################################################################################### webcam 페이지 레이아웃
+    def ui_mainLayout(self):        
+        # 버튼 : 시작, 통계, 중지, 종료
         self.startBtn = QPushButton(text="▶", parent=self)
         self.statisticBtn = QPushButton(text="통계", parent=self) 
         self.stopBtn = QPushButton(text="■", parent=self)
         self.quitBtn = QPushButton(text="프로그램 종료", parent=self)
         
-        # 웹캠
+        # 웹캠 출력부
         self.webLabel = QLabel("재생 버튼을 눌러주세요")
         self.webLabel.setAlignment(QtCore.Qt.AlignCenter)
         
-        # cor/incor 표시 라벨
+        # cor/incor 피드백 색깔 표시
         self.correctLabel = QLabel()
-        # self.correctLabel.move(200,200)
+
         
         # 레이아웃
         main_layout = QVBoxLayout()
-        
+
         main_layout.addWidget(self.webLabel)
         main_layout.addWidget(self.correctLabel)
-        self.correctLabel.setVisible(False)
+        self.correctLabel.setVisible(False)         # 웹캠 재생 전에는 안 보이게
         
-        # 행 - 버튼
+        # 행 - 버튼 레이아웃
         hbox_btn = QHBoxLayout()
+        
         hbox_btn.addWidget(self.startBtn)
         hbox_btn.addWidget(self.stopBtn)
         hbox_btn.addWidget(self.statisticBtn)
@@ -149,35 +135,32 @@ class MyWindow(QMainWindow):
         
         self.webcam.setLayout(main_layout)
     
-    
-    ##########################################메뉴바##################################    
-        
+       
+    ########################################################################################################## 메뉴바    
     def ui_menu(self):
         # 메뉴바 버튼
         alarmCheck = QAction('자세 알람 사용', self, checkable=True)
-        alarmCheck.setChecked(True)
+        alarmCheck.setChecked(True)                                     # 체크된 상태로 시작
         exitAction = QAction('프로그램 종료', self)
         dbToxlsx = QAction('엑셀 파일로 저장하기', self)
         clearDB = QAction('DB 초기화', self)
-        
-        
-        # credit
-        # creditMenu = QMenu('Credit', self)
 
-        
         
         # 메뉴바
         menubar = self.menuBar()
         menubar.setNativeMenuBar(False)
         
+        # 메뉴바 File 탭
         filemenu = menubar.addMenu('File')
         
+        # 메뉴바 탭에 추가
         filemenu.addAction(alarmCheck)
         filemenu.addAction(dbToxlsx)
         filemenu.addAction(clearDB)
-        creditMenu = filemenu.addMenu('credit')
         
-        creditto = QAction('| made by.aivle_team10 | team10 구성원에게 공유받은 모든 이들에게 사용을 허가합니다 | 비관계자 재배포 금지 |', self)
+        # credit 탭 추가
+        creditMenu = filemenu.addMenu('credit')
+        creditto = QAction('| made by.team10 | team10 구성원에게 공유받은 모든 이들에게 사용을 허가합니다 | 비관계자의 재배포 금지 |', self)
         creditMenu.addAction(creditto)
         
         # 선(구분선) 추가
@@ -187,32 +170,29 @@ class MyWindow(QMainWindow):
         
         # 연결
         alarmCheck.triggered.connect(self.using_alarm)
-        
         dbToxlsx.triggered.connect(self.save_xlsx)
-        
         clearDB.triggered.connect(self.delete_data)
-        
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(self.close)
         
-    
+        # 단축키 설정
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        
+        
+    ##################################################################################################### DB 초기 세팅    
     def db_setting(self):
         # db 생성
         con = sqlite3.connect('db.sqlite', isolation_level= None)
-        print('db생성 type : ', type(con))
-        # 데이터 삽입
         # connection 객체 con을 이용해 cursor 객체를 생성
         cursor = con.cursor()
-        
 
         # 테이블 생성 쿼리 실행
         cursor.execute('''
-                            CREATE table IF NOT EXISTS posture(
-                                timeymd TEXT NOT NULL, 
-                                timehms TEXT NOT NULL, 
-                                posturetype INTEGER NOT NULL
-                                );
+                CREATE table IF NOT EXISTS posture(
+                    timeymd TEXT NOT NULL, 
+                    timehms TEXT NOT NULL, 
+                    posturetype INTEGER NOT NULL
+                    );
                             ''')
         
         # 변경사항 저장
@@ -222,25 +202,21 @@ class MyWindow(QMainWindow):
         con.close()
         
                             
-        
+    ######################################################################################### 상태 표시줄 시간 업데이트    
     def update_time(self):
         self.datetime = QDateTime.currentDateTime().toString('yyyy.MM.dd,hh:mm:ss')
-        # dataDate = self.datetime.split(',')
-        # print('지금 시간 : ', '  '.join(dataDate))
-        # print('지금 시간 : ', dataDate)
-        
         self.statusBar().showMessage(self.datetime)
         self.statusBar()
         
         
+    ############################################################################################## outer stack layout
     def stack_layout(self):
-        # self.stat = QWidget()
         self.stat_db = QWidget()
         self.webcam = QWidget()
         
         self.Stack = QStackedWidget()
+        
         self.Stack.addWidget(self.webcam)
-        # self.Stack.addWidget(self.stat)
         self.Stack.addWidget(self.stat_db)
         
         self.setCentralWidget(self.Stack)
@@ -263,103 +239,80 @@ class MyWindow(QMainWindow):
 
         
     
-    ## db 통계 페이지 ui
+    ################################################################################################### db 통계 페이지
     def ui_statistic_db(self):   
-        
+        # stat_day_widget
         self.fig = plt.Figure(figsize=(4, 3))
-        self.canvas = FigureCanvas(self.fig)       
-        self.canvas2 = FigureCanvas(self.fig) 
-        
-        
-        statdb_layout = QVBoxLayout()
-        # statdb_layout.addWidget(self.canvas)
-
-        self.homeBtn = QPushButton(text="Back", parent=self)
-        self.quitBtn2 = QPushButton(text="프로그램 종료", parent=self)
-        
-        self.homeBtn2 = QPushButton(text="Back", parent=self)
-        self.quitBtn3 = QPushButton(text="프로그램 종료", parent=self)
-        
-        
-        
+        self.canvas = FigureCanvas(self.fig)     
+        self.dayhomeBtn = QPushButton(text="Back", parent=self)
+        self.dayquitBtn = QPushButton(text="프로그램 종료", parent=self)
         self.lineBtn = QPushButton(text="일주일 간 자세 비율 통계", parent=self)
-        self.pieBtn = QPushButton(text="일일 자세 통계", parent=self)
-        
-        
         self.date_combobox = QComboBox(self)
+        
+        # stat_week_widget
+        self.weekCanvas = FigureCanvas(self.fig) 
+        self.weekhomeBtn = QPushButton(text="Back", parent=self)
+        self.weekquitBtn = QPushButton(text="프로그램 종료", parent=self)
+        self.pieBtn = QPushButton(text="일일 자세 통계", parent=self)
         self.date_combobox2 = QComboBox(self)
-        # date_list = self.get_alldates()
-        # if date_list != []:
-        #     self.date_combobox.addItem(date_list.pop())
-        #     date_list.sort(reverse=True)
-        #     self.date_combobox.addItems(date_list)
-        # self.date_combobox.currentIndexChanged.connect(self.show_daychart)
-        if self.first:
-            self.update_combobox()
-            self.first = False
         
         
+        # outer stack layout
+        statdb_layout = QVBoxLayout()
         
-        hbox = QHBoxLayout()
-        # hbox.addWidget(self.homeBtn)
-        # hbox.addWidget(self.pieBtn)
-        hbox.addWidget(self.lineBtn)
+        # inner stack widget
+        self.stat_day_widget = QWidget()
+        self.stat_week_widget = QWidget()
         
-        hbox2 = QHBoxLayout()
-        # hbox.addWidget(self.homeBtn)
-        hbox2.addWidget(self.pieBtn)
-        # hbox2.addWidget(self.lineBtn)
+        # inner stack layout
+        inner_stat_daily_layout = QVBoxLayout(self.stat_day_widget)
+        inner_stat_weekly_layout = QVBoxLayout(self.stat_week_widget)
         
-        
-        self.stat_1 = QWidget()
-        self.stat_2 = QWidget()
-        inner_stat_layout_1 = QVBoxLayout(self.stat_1)
-        inner_stat_layout_2 = QVBoxLayout(self.stat_2)
-        
+        # inner stack
         self.inner_Stack = QStackedWidget()
-        self.inner_Stack.addWidget(self.stat_1)
-        # self.Stack.addWidget(self.stat)
-        self.inner_Stack.addWidget(self.stat_2)
+        self.inner_Stack.addWidget(self.stat_day_widget)
+        self.inner_Stack.addWidget(self.stat_week_widget)
         
-        inner_stat_layout_1.addWidget(self.canvas)
-        inner_stat_layout_1.addWidget(self.date_combobox)
-        inner_stat_layout_1.addLayout(hbox)
-        inner_stat_layout_1.addWidget(self.homeBtn)
-        inner_stat_layout_1.addWidget(self.quitBtn2)
+        # inner stack layout - widget 추가
+        inner_stat_daily_layout.addWidget(self.canvas)
+        inner_stat_daily_layout.addWidget(self.date_combobox)
+        inner_stat_daily_layout.addWidget(self.lineBtn)
+        inner_stat_daily_layout.addWidget(self.dayhomeBtn)
+        inner_stat_daily_layout.addWidget(self.dayquitBtn)
         
-        inner_stat_layout_2.addWidget(self.canvas2)
-        inner_stat_layout_2.addWidget(self.date_combobox2)
-        inner_stat_layout_2.addLayout(hbox2)
-        inner_stat_layout_2.addWidget(self.homeBtn2)
-        inner_stat_layout_2.addWidget(self.quitBtn3)
+        inner_stat_weekly_layout.addWidget(self.weekCanvas)
+        inner_stat_weekly_layout.addWidget(self.date_combobox2)
+        inner_stat_weekly_layout.addWidget(self.pieBtn)
+        inner_stat_weekly_layout.addWidget(self.weekhomeBtn)
+        inner_stat_weekly_layout.addWidget(self.weekquitBtn)
         
-        self.stat_1.setLayout(inner_stat_layout_1)
-        self.stat_2.setLayout(inner_stat_layout_2)
-        
-        
-        ##############################################################################
-        
-        # statdb_layout.addWidget(self.date_combobox)
+        # inner stack layout setting
+        self.stat_day_widget.setLayout(inner_stat_daily_layout)
+        self.stat_week_widget.setLayout(inner_stat_weekly_layout)
     
+        # outer stack layout setting
         statdb_layout.addWidget(self.inner_Stack)
-        # statdb_layout.addLayout(hbox)
-        # statdb_layout.addWidget(self.homeBtn)
-        # statdb_layout.addWidget(self.quitBtn2)
-        
         self.stat_db.setLayout(statdb_layout)
         
+        
+    ############################################################################################# combobox 데이터 갱신
     def update_combobox(self):
-        print('combobox count : ', self.date_combobox.count())
         if self.date_combobox.count()==0:
             date_list = self.get_alldates()
             if date_list != []:
                 self.date_combobox.addItem(date_list.pop())
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
-            self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+        else :
+            # combobox가 비어있지 않으나 데이터는 최신이 아닐때에 대한 코드
+            
+            # if self.first:
+            #     # 이거 때문에 주르륵 실행되는 걸지도..
+            # self.date_combobox.currentIndexChanged.connect(self.show_daychart)
+            # print("################################# 콤보박스 업데이트")
         
-    
-    
+    ############################################################################## (combobox용) unique 날짜 데이터 조회
+    # return : [unique 날짜들]
     def get_alldates(self):
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
@@ -371,17 +324,22 @@ class MyWindow(QMainWindow):
                     SELECT DISTINCT timeymd
                     FROM POSTURE  
                                   ''')
+        
+        # list 안에 튜플 형식
         alldates = cursor.fetchall()
+        
         conn.commit()
         conn.close()
-        alldates = [date[0] for date in alldates]
         
-        print('alldates : ',alldates)
+        # list로 변환
+        alldates = [date[0] for date in alldates]   
+        
         return alldates
     
-    # 전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4
+    
+    ################################################################################################## 일일 데이터 조회
+    # return : [전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4]
     def get_onedaydata(self, whatdate):
-        self.update_combobox()
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
 
@@ -401,22 +359,26 @@ class MyWindow(QMainWindow):
                 FROM POSTURE
                 WHERE timeymd = ?;
                 ''', (whatdate,))
+        
+        # [ ( ) ] 형식
         oneday = cursor.fetchall()
+        
         conn.commit()
         conn.close()
+        # list로 변환
         oneday = list(oneday[0])
         
+        # 데이터가 없는 경우 0으로 치환
         if None in oneday:
             for i in range(len(oneday)):
                 if oneday[i]==None:
                     oneday[i] = 0
         
-        print('oneday : ', type(oneday))
-        print('oneday : ', oneday)
         return oneday
         
         
-    
+    ################################################################################################ 일주일 데이터 조회
+    # return : 데이터 Date 라벨, 바른 자세 비율, 바르지 못한 자세 비율 (일주일치)
     def get_sevendays_db(self):
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
@@ -424,10 +386,12 @@ class MyWindow(QMainWindow):
         # 커서 생성
         cursor = conn.cursor()
         
-        # 날짜
+        # 날짜 호출
         date = QDateTime.currentDateTime()
         todayDate = date.toString('yyyy.MM.dd')
         sixdaybeforeDate = date.addDays(-6).toString('yyyy.MM.dd')
+        
+        # 데이터 라벨용 - 날짜
         data_date = []
         date_label = []
         
@@ -444,59 +408,41 @@ class MyWindow(QMainWindow):
                 ''', (sixdaybeforeDate, todayDate))
         
         # list - tuple 타입
-        # data_label = ['date', 'total', 'badcount', '0']
+        # [('date', 'total', 'badcount', '0')]
         sevendays = cursor.fetchall()
-        # print('db 데이터 : ',sevendays)
-        # print('db 데이터 : ',type(sevendays))
-        # print('db 데이터 : ',sevendays[1])
-        # print('db 데이터 : ',type(sevendays[1]))
-        # print('db 데이터 : ',sevendays[1][0])
         
         conn.commit()
-        
         conn.close()
         
+        # 데이터 Date 라벨 생성
         for i in range(1,8):
             data_date.append(date.addDays(-7+i).toString('yyyy.MM.dd'))
             date_label.append(date.addDays(-7+i).toString('MM/dd'))
-            
-        print('date col : ', date_label)
-        print('data date col : ', data_date)
         
-        
-        # 데이터 가공 : correct_ratio, incorrect_ratio, date_col, today_postureType_cnt
+        # 데이터 가공 : correct_ratio, incorrect_ratio
         correct_ratio = []
         incorrect_ratio = []
-        # today_postureType_cnt = []
         
         for i in range(len(data_date)):
             for j in range(len(sevendays)):
                 if(data_date[i] != sevendays[j][0]):
                     continue
-                else:
+                else: # 분모가 0일때 예외처리 추가 안해도 되나
                     correct_ratio.append(round((sevendays[j][3]/sevendays[j][1]), 2))
                     incorrect_ratio.append(round((sevendays[j][2]/sevendays[j][1]), 2))
                     break
+            # 해당 날짜에 데이터가 없는 경우 0으로 치환
             if len(correct_ratio) != (i+1):
                 correct_ratio.append(0)
                 incorrect_ratio.append(0)
-                
-        # for i in range(3,9):
-        #     today_postureType_cnt.append(sevendays[-1][i])
-        
-        print('correct ratio : ', correct_ratio)
-        print('incorrect ratio : ', incorrect_ratio)
-        # print('today count : ',today_postureType_cnt)
-    
-        
+
         return date_label, correct_ratio, incorrect_ratio
     
     
+    ################################################################################################### DB 데이터 삽입
     def insert_data(self, ymd, hms, potype):
-        
-        # self.cursur
-        conn = sqlite3.connect('db.sqlite')
-        
+        # DB 연결
+        conn = sqlite3.connect('db.sqlite')   
         cursor = conn.cursor()
         
         # 데이터 삽입 쿼리
@@ -506,103 +452,85 @@ class MyWindow(QMainWindow):
                 ''', (ymd, hms, potype))
         
         conn.commit()
-        
         conn.close()
 
-        
-    
-    ########################### 이하 기능 ###############################
-    
+
+    ################################################################################################ 레이아웃 함수 연결
     def layout_connection(self):
+        # webcam 페이지
         self.startBtn.clicked.connect(self.start)
         self.stopBtn.clicked.connect(self.stop)
         self.statisticBtn.clicked.connect(self.show_daychart)
-        # self.statisticBtn.clicked.connect(self.show_stat2)
-        self.homeBtn.clicked.connect(self.show_webcam)
-        self.homeBtn2.clicked.connect(self.show_webcam)
-        # self.nextBtn.clicked.connect(self.show_stat2)
-        self.lineBtn.clicked.connect(self.show_weekchart)
-        self.pieBtn.clicked.connect(self.show_daychart)
         self.quitBtn.clicked.connect(self.onExit2)
-        self.quitBtn2.clicked.connect(self.onExit2)
-        self.quitBtn3.clicked.connect(self.onExit2)
+        
+        # 일일 통계 페이지
+        self.dayhomeBtn.clicked.connect(self.show_webcam)
+        self.dayquitBtn.clicked.connect(self.onExit2)
+        self.lineBtn.clicked.connect(self.show_weekchart)
+        
+        # 주간 통계 페이지
+        self.weekhomeBtn.clicked.connect(self.show_webcam)
+        self.pieBtn.clicked.connect(self.show_daychart)
+        self.weekquitBtn.clicked.connect(self.onExit2)
 
         
+    ################################################################################### webcam 페이지 출력 함수 - main
     def show_webcam(self):
         self.Stack.setCurrentIndex(0)
         self.correctLabel.setVisible(False)
-        self.statisticBtn.setEnabled(True)
-        self.startBtn.setEnabled(True)
-        self.stopBtn.setEnabled(True)
-        self.homeBtn.setEnabled(False)
         print('###### webcam 페이지')
         
-    # def show_stat(self):
-    #     self.Stack.setCurrentIndex(1)
-    #     self.stop()
-    #     self.statisticBtn.setEnabled(False)
-    #     self.startBtn.setEnabled(False)
-    #     self.stopBtn.setEnabled(False)
-    #     self.homeBtn.setEnabled(True)
-    #     print('###### statistic 페이지')
         
-    def show_stat2(self):
-        self.Stack.setCurrentIndex(1)
-        self.stop()
-        self.show_daychart()
-        self.statisticBtn.setEnabled(False)
-        self.startBtn.setEnabled(False)
-        self.stopBtn.setEnabled(False)
-        self.homeBtn.setEnabled(True)
-        print('###### statistic2 페이지')
-        
-        
+    ######################################################################################## 일일 통계 페이지 출력 함수
     def show_daychart(self):
         self.Stack.setCurrentIndex(1)
         self.inner_Stack.setCurrentIndex(0)
-        self.stop()
-        self.draw_daychart()
+        self.stop()                             # 페이지 이동 시 thread 종료
+        self.draw_daychart()                    # 일일 그래프 출력
         self.lineBtn.setEnabled(True)
-        self.homeBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
         print('일일 통계 페이지')
+        
     
+    ######################################################################################### 주간 통계 페이지 출력 함수
     def show_weekchart(self):
         self.inner_Stack.setCurrentIndex(1)
-        self.draw_weekchart()
+        self.draw_weekchart()                   # 주간 그래프 출력
         self.date_combobox2.setEnabled(False)
         self.lineBtn.setEnabled(False)
         self.pieBtn.setEnabled(True)
         print('주간 통계 페이지')
 
-        
+    
+    ############################################################################################# 주간 그래프 생성 함수
     def draw_weekchart(self):
          # 그래프 초기화
-        self.canvas2.figure.clear()
+        self.weekCanvas.figure.clear()
                 
         # 한글 출력 설정
         plt.rcParams['font.family'] ='Malgun Gothic'
         plt.rcParams['axes.unicode_minus'] =False
 
+        # 주간 데이터 
         date_label, correct_ratio, incorrect_ratio = self.get_sevendays_db()
         
+        # 그래프 title
         graphLabel = '일주일 간 자세 비율 통계'
             
         # 꺾은 선 그래프
-        axdb = self.canvas2.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
+        axdb = self.weekCanvas.figure.add_axes([0.1, 0.1, 0.8, 0.8])        
         axdb.plot(date_label, correct_ratio, marker='o', label='correct pose')
         axdb.plot(date_label, incorrect_ratio, marker='o', label='incorrect pose')
 
-        # axdb.tick_params(axis='x', rotation=40)
         axdb.legend()
         axdb.set_title(graphLabel)
         
-        self.canvas2.draw()
+        self.weekCanvas.draw()
         
         
+    ############################################################################################# 일일 그래프 생성 함수
     def draw_daychart(self):
-         # 그래프 초기화
-         
+        # 그래프 초기화
         self.canvas.figure.clear()
         
         # 한글 출력 설정
@@ -610,35 +538,41 @@ class MyWindow(QMainWindow):
         plt.rcParams['axes.unicode_minus'] =False
 
         # ComboBox에서 선택된 날짜 가져오기
+        # self.update_combobox()
         selected_date = self.date_combobox.currentText()
+        # 일일 데이터 : [전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4]
         oneday_data = self.get_onedaydata(selected_date)
-        print('통계페이지 상 oneday_data : ', oneday_data)        
-        
+
+        # 그래프 title        
         graphLabel = selected_date + ' :: 일일 자세 통계'
             
         # 일일 통계 그래프
         axdb = self.canvas.figure.subplots(1,2)
         self.canvas.figure.suptitle(graphLabel, fontsize=12, y=0.96)
         
-        print('onedaydata 통계페이지 : ',oneday_data)
+        # 일일 자세 비율 : 바른 자세 / 바르지 못한 자세
         todaystat = []
+        # 분모가 0이 아닐 때 / 분모가 0이면 0 입력
         if(oneday_data[0]!=0):
             todaystat.append(round((oneday_data[3]/oneday_data[0]), 2))
             todaystat.append(round((oneday_data[1]/oneday_data[0]), 2))
         else:
             todaystat.append(0)
             todaystat.append(0)
-        print('통계 페이지상 todaystat : ', todaystat)
+            
         todaystat_label = ['바른 자세 비율', '나쁜 자세 비율']
         todaystat_color = ['#87CEEB', '#ff9999']
         
+        # g1 - bar plot
         axdb[0].bar(todaystat_label, todaystat, color=todaystat_color, width=0.7)
         
         
+        # pie chart
         pie_labels = ['자리비움', '바른 자세', '거북목 자세', '턱괴는 자세', '엎드리는 자세', '누워 기대는 자세']
         pie_colors = ['#D3D3D3', '#87CEEB', '#ff9999', '#ffc000', '#8fd9b6', '#d395d0']
         wedgeprops={'width': 0.7, 'edgecolor': 'w', 'linewidth': 5}
         
+        # [-1, 0, 1, 2, 3, 4]
         posturetype_cnt = oneday_data[2:]
         
         # 0이 아닌 타입만 파이차트에 출력
@@ -648,18 +582,17 @@ class MyWindow(QMainWindow):
         # 범례에 사용할 원 모양의 마커 생성
         legend_handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=not_zero_colors[i].format(i), markersize=10) for i in range(len(not_zero_label))]
         
+        # 데이터가 있으면 그래프를 생성
         if posturetype_cnt.count(0)!=len(posturetype_cnt):
             axdb[1].pie([size for size in posturetype_cnt if size != 0], labels=not_zero_label, autopct='%.1f%%', pctdistance=0.85,
                         startangle=260, counterclock=False, colors=not_zero_colors, wedgeprops=wedgeprops)
             
-            # axdb[1].legend(not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
             axdb[1].legend(legend_handles, not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
         
         self.canvas.draw()
         
-    
-    ######################################### 모델 예측 #########################################
-    
+
+    ###################################################################################################### 모델 동작부
     def run(self):
         # width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         # height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -912,6 +845,7 @@ class MyWindow(QMainWindow):
         
         query = 'SELECT * FROM POSTURE;'
         df = pd.read_sql(query, conn)
+        conn.commit()
         # 연결 종료
         conn.close()
         
