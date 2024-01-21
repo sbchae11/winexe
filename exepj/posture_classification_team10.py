@@ -304,6 +304,7 @@ class MyWindow(QMainWindow):
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
         else :
+            print('수정중..')
             # combobox가 비어있지 않으나 데이터는 최신이 아닐때에 대한 코드
             
             # if self.first:
@@ -593,22 +594,15 @@ class MyWindow(QMainWindow):
         
 
     ###################################################################################################### 모델 동작부
-    def run(self):
-        # width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        # height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        
+    def run(self):    
         # 시간 측정을 위한 초기 시간 설정
         prev_time = 0
         interval = 3  # n초 간격
         
         mp_holistic = mp.solutions.holistic
         
-        target_width = 500
-        # target_height = 300
-        
-        # self.webLabel.resize(target_width, target_height) # ?
-        
+        target_width = 500 # 나중에 수정할지도..
+                
         while self.running:
             with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
                 ret, frame = self.cap.read()
@@ -677,112 +671,117 @@ class MyWindow(QMainWindow):
         
                             # 자세 예측
                             prediction = self.model.predict(row_df)
-                            class_name = prediction[0] # 여기를 DB로 넘김
-                            # print("클래스 : ", class_name)
-                        
-                            # now_ymd = datetime.now().strftime('%Y.%m.%d')
-                            # now_hms = datetime.now().strftime('%H:%M:%S')
-                            # print("오늘 날짜 : ", now_ymd)
-                            # print("현재 시간 : ", now_hms)
-                            # PostureDetection.objects.create(user=request.user, timeymd=now_ymd, timehms=now_hms, posturetype=class_name)
-                            # 다음 데이터 처리 시간 업데이트
-                            prev_time = current_time
-                            print("자세 : ", class_name)
-
+                            
+                            class_name = prediction[0] 
+                            
                         else:
                             # 가시성이 낮을 때는 대기 메시지 표시
                             class_name = -1
-                            print("자세 : ", class_name)
-                            # now_ymd = datetime.now().strftime('%Y.%m.%d')
-                            # now_hms = datetime.now().strftime('%H:%M:%S')
-                            # PostureDetection.objects.create(user=request.user, timeymd=now_ymd, timehms=now_hms, posturetype=class_name)
-                        print('class name type : ', type(class_name))
                         
-                        # self.insert_data()
+                        
+                        print("자세 : ", class_name)
+                        
+                        # 다음 데이터 처리 시간 업데이트
+                        prev_time = current_time
+                        
+                        # 현재 자세 판단 결과 - 사용자 색상 피드백
                         self.show_corincor_color(int(class_name))
                         
+                        # ['yyyy.MM.dd', 'hh:mm:ss']
                         dataDate = self.datetime.split(',')
                         print(dataDate)
                         
+                        # DB에 데이터 추가 : ['yyyy.MM.dd', 'hh:mm:ss', n]
                         self.insert_data(dataDate[0],dataDate[1],int(class_name))
                         
-                        dataDate.append(class_name)
-                        # {ymd, hms, posturetype} 데이터 저장
+                        # {ymd, hms, posturetype} 데이터 저장 - csv용
+                        # dataDate.append(class_name)
                         # perData = dict(zip(self.columns, dataDate))
                         # perData = pd.DataFrame(perData, index=[0])
                         # self.data = pd.concat([self.data,perData])
+                        
+                        # 상태표시줄 시간 갱신
                         self.update_time()
                         
+                        # 자세 교정 기준 - 알림용
                         self.posture_okay.append(class_name)
                         print(self.posture_okay)
                         
+                    # 5초 & 알람 사용O -> 계속 안 좋은 자세 & 자리를 비우지 않음 -> 알람 함수 호출, 기준 초기화
                     if (len(self.posture_okay)==5)&self.usingAlarm:
                         if (self.posture_okay.count(0)==0)&(self.posture_okay.count(-1)!=len(self.posture_okay)):
                             self.bad_posture_alarm()
                         self.posture_okay = []
+                    # 5초 지남 & 알람 사용X -> 기준 초기화
                     elif (len(self.posture_okay)==5):
                         self.posture_okay = []
                         
-                    ############################ 윈도우 창에 이미지 출력 #########################
+                    # 윈도우 창에 webcam 출력
                     h,w,c = image.shape
+                    # 높이 : 너비에 비율로 맞춤
                     target_height = int(h * (target_width / w))
                     qImg = QtGui.QImage(image.data, w, h, w*c, QtGui.QImage.Format_RGB888)
                     qImg = qImg.scaled(target_width, target_height, aspectRatioMode=QtCore.Qt.KeepAspectRatio)
                     pixmap = QtGui.QPixmap.fromImage(qImg)
-                    # self.webLabel.resize(target_width, target_height)
                     self.webLabel.setPixmap(pixmap)
                     
-                    
+                # webcam을 읽어오지 못함
                 else:
                     QMessageBox.about(self, "Error", "Cannot read frame.")
                     break
-            
+                
+        # thread 종료    
         self.cap.release()
         print('###### thread end')
-        # waiting_path = os.path.join(self.script_directory, 'su_final.png')
+        # 정지 시 화면 대기 중 이미지 출력
         self.webLabel.setPixmap(QtGui.QPixmap(self.program_directory + 'su_final.png'))
         
+        
+    ############################################################################################ 정지 버튼 이벤트 함수
     def stop(self):
         print('press stop')
-        self.running = False
-        self.label_visibility()
+        self.running = False                        # thread 종료
+        self.correctLabel.setVisible(False)         # 사용자 피드백 label 숨김
         self.startBtn.setEnabled(True)
         print('###### stop')
         
+        
+    ############################################################################################ 시작 버튼 이벤트 함수
     def start(self):
         print('press start')
         self.cap = cv2.VideoCapture(0)
         ret, frame = self.cap.read()
         in_use = ret
+        # webcam 접근 가능
         if in_use:
             self.running = True
-            self.label_visibility()
+            self.correctLabel.setVisible(True)
+            # thread 시작
             th = threading.Thread(target=self.run)
             th.start()
+            # thread 중복 시작 방지
             self.startBtn.setEnabled(False)
             print('###### start')
+        # webcam 접근 불가
         else: 
             self.webLabel.setText("웹캠이 사용 중입니다. 다른 곳에서의 사용을 중지 후 다시 재생 버튼을 눌러주세요.")
             self.cap.release()
         
-        
+    
+    ######################################################################################## 프로그램 종료 이벤트 함수
     def onExit(self):
         print('###### exit')
-        # self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
-        # self.saveData.to_csv('posture_data.csv', index=False)
-        # print('###### file saved')
         self.stop()
         
+        
+    ######################################################################################### 프로그램 종료 이벤트 함수   
     def onExit2(self):
         print('###### exit2')
-        # self.saveData = pd.concat([self.saveData,self.data]).reset_index(drop=True)
-        # self.saveData.to_csv('posture_data.csv', index=False)
-        # print('###### file saved')
         self.stop()
         sys.exit()
        
        
-    # 데이터 초기화    
+    ############################################################################################ DB 초기화 이벤트 함수    
     def delete_data(self):
         # SQLite 연결
         conn = sqlite3.connect('db.sqlite')
@@ -806,45 +805,57 @@ class MyWindow(QMainWindow):
         # 연결 종료
         conn.close()
         
+        # combobox 데이터 초기화
         self.date_combobox.clear()
-        self.first = True
+        # self.first = True 쓸지 말지 고민좀..
         
         
-        
+    ################################################################################### 알람 사용 checkbox 이벤트 함수
     def using_alarm(self, checked):
         if checked:
             self.usingAlarm = True
         else:
             self.usingAlarm = False
     
+    
+    ############################################################################################## 나쁜 자세 알람 함수
     def bad_posture_alarm(self):
         toast = wt.ToastNotifier()
-        # ico_path = os.path.join(self.script_directory, 'logo_page.ico')
         toast.show_toast("!!! 자세 경고 !!!", # 제목
                 "자세가 올바르지 않습니다. \n 건강을 위해 바른 자세를 취해주세요.", # 내용
                 icon_path=self.program_directory + 'logo_page.ico', # icon 위치
                 duration=3)
         
+
+    # # 스트레칭 알람 쓸지말지 고민좀..
     # def stretching_alarm(self):
     #     # 현재 시간
     #     current_time = time.time()   
     
+    
+    ########################################################################################## export xlsx 이벤트 함수
+    # 작동을 안하는데 원인규명 필요
     def save_xlsx(self):
         options = QFileDialog.Options()
-        # options |= QFileDialog.DontUseNativeDialog
         
         file_path, _ = QFileDialog.getSaveFileName(None, 'Save Excel File', './', 
                                                    'Excel files (*.xlsx);;All Files (*)', 
                                                    options=options)
         if file_path:
+            print('파일 경로 전달: ', file_path)
             self.export_xlsx(file_path)
         
+    ########################################################################### ( save_xlsx ) xlsx 파일로 저장하는 함수
     def export_xlsx(self, savepath):
+        print('##################export_xlsx 진입')
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
         
         query = 'SELECT * FROM POSTURE;'
+        
+        # 읽어온 데이터를 데이터프레임으로 변환
         df = pd.read_sql(query, conn)
+        
         conn.commit()
         # 연결 종료
         conn.close()
@@ -855,27 +866,24 @@ class MyWindow(QMainWindow):
             print(f"Data saved to {savepath}")
         except Exception as e:
             print(f"Error: {e}")
-
         return
     
-    def label_visibility(self):
-        # QLabel의 visibility 속성을 토글
-        self.correctLabel.setVisible(not self.correctLabel.isVisible())
     
+    ################################################################################ 자세 판별 - 사용자 색상 피드백 함수
     def show_corincor_color(self, class_name):
+        # 안 좋은 자세
         if class_name in [1,2,3,4]:
             self.correctLabel.setStyleSheet("color: red;"
                                "background-color: #ff9999")
+        # 자리 비움
         elif class_name == -1:
             self.correctLabel.setStyleSheet("color: gray;"
                                "background-color: #D3D3D3")
+        # 바른 자세
         elif class_name == 0:
             self.correctLabel.setStyleSheet("color: blue;"
                                "background-color: #87CEEB")
-        
-
-        
-    
+   
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
