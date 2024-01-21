@@ -37,7 +37,6 @@ class MyWindow(QMainWindow):
         super().__init__()
 
         self.running = False    # thread 실행/종료
-        self.first = True       # 처음 실행ㅇ..음 수정 필요
         self.usingAlarm = True  # 알람 사용/미사용
         self.posture_okay = []  # 자세 판단 데이터
         self.th = None          # thread
@@ -59,8 +58,7 @@ class MyWindow(QMainWindow):
         # db 준비
         self.db_setting()
 
- 
-        
+
         v_layout = QVBoxLayout()
         
         
@@ -317,18 +315,13 @@ class MyWindow(QMainWindow):
                 self.date_combobox.addItem(date_list.pop())
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
-            # self.date_combobox.clear()
-            # print('수정중..')
-            # combobox가 비어있지 않으나 데이터는 최신이 아닐때에 대한 코드
-            
-            # if self.first:
-            #     # 이거 때문에 주르륵 실행되는 걸지도..
         print('######################### combo update : ', self.iii)
         self.iii += 1
         self.date_combobox.currentIndexChanged.connect(self.connect_to_selected_date)
             # print("################################# 콤보박스 업데이트")
             
-            
+           
+    ####################################################################################### (combobox용) 지정 날짜 반영 
     def connect_to_selected_date(self):
         self.selected_date = self.date_combobox.currentText()
         
@@ -525,12 +518,7 @@ class MyWindow(QMainWindow):
         if self.running:
             self.stop()   # 페이지 이동 시 thread 종료
         self.Stack.setCurrentIndex(1)
-        self.inner_Stack.setCurrentIndex(0)
-        # self.working = True
-        
-        # # 이벤트 루프 처리
-        # QApplication.processEvents()
-        
+        self.inner_Stack.setCurrentIndex(0)   
         self.draw_daychart()                    # 일일 그래프 출력
         self.lineBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
@@ -600,7 +588,6 @@ class MyWindow(QMainWindow):
 
         # ComboBox에서 선택된 날짜 가져오기
         self.update_combobox()
-        # self.selected_date = self.date_combobox.currentText()
         # 일일 데이터 : [전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4]
         oneday_data = self.get_onedaydata(self.selected_date)
 
@@ -881,23 +868,6 @@ class MyWindow(QMainWindow):
         self.date_combobox.clear()
         print('delete data : ', self.iii)
         self.iii +=1
-        # self.first = True 쓸지 말지 고민좀..
-    
-    # def delete_data(self):
-    #     file_path = self.program_directory + 'db.sqlite'
-    #     try:
-    #         os.remove(file_path)
-    #         print(f"File '{file_path}' deleted successfully.")
-    #     except Exception as e:
-    #         print(f"Error deleting file '{file_path}': {e}")
-        
-    #     # combobox 데이터 초기화
-    #     self.date_combobox.clear()
-    #     self.db_setting()
-        
-    #     print('delete data : ', self.iii)
-    #     self.iii +=1
-    #     # self.first = True 쓸지 말지 고민좀..
         
         
     ################################################################################### 알람 사용 checkbox 이벤트 함수
