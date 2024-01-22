@@ -5,7 +5,7 @@ buildOptions = {
 	"packages":[
     	"matplotlib","scipy","numpy","os", "cv2", "sys", "threading", "PyQt5",
      "sqlite3", "mediapipe", "joblib", "pandas", "preprocessing", "win10toast", "time",
-     "xgboost", 'sklearn'
+     "xgboost", 'sklearn', 'openpyxl'
     ],
     "excludes":[
     ],
@@ -16,7 +16,7 @@ buildOptions = {
     ("C:\\Users\\user\\aivle\\bp\\winexe\\exepj\\pose_classification_model.pkl", 'pose_classification_model.pkl'),
     ("C:\\Users\\user\\aivle\\bp\\winexe\\exepj\\preprocessing.py", 'preprocessing.py'),
     ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\sklearn\\.libs\\msvcp140.dll", 'msvcp140.dll'),
-    ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll", 'vcomp140.dll')
+    ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll", 'vcomp140.dll'),
 ]
 }
 
