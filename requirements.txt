@@ -14,3 +14,5 @@ pyautogui
 pyqt5designer
 win10toast
 pyinstaller==5.13.2
+openpyxl
+xlsxwriter
