@@ -225,15 +225,6 @@ class MyWindow(QMainWindow):
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
         
-    def model_setting_change(self):
-        # 메인 창 숨김
-        self.hide()
-        # 두 번째 창 활성화
-        self.second_win = ModelSettingChangeWidget()
-        self.second_win.exec()
-        # 두 번째 창을 닫으면 다시 메인 창이 활성화
-        self.show()
-        
         
     ##################################################################################################### DB 초기 세팅    
     def db_setting(self):
@@ -241,15 +232,40 @@ class MyWindow(QMainWindow):
         con = sqlite3.connect('db.sqlite', isolation_level= None)
         # connection 객체 con을 이용해 cursor 객체를 생성
         cursor = con.cursor()
+        
+        query = "SELECT name FROM sqlite_master WHERE type='table';"
+        cursor.execute(query)
+        table_exist = cursor.fetchall()
+        table_exist = [data[0] for data in table_exist]   
+        
+        # print(table_exist)
 
-        # 테이블 생성 쿼리 실행
-        cursor.execute('''
-                CREATE table IF NOT EXISTS posture(
-                    timeymd TEXT NOT NULL, 
-                    timehms TEXT NOT NULL, 
-                    posturetype INTEGER NOT NULL
-                    );
-                            ''')
+        if len(table_exist)==0:
+            # 테이블 생성 쿼리 실행
+            cursor.execute('''
+                    CREATE table IF NOT EXISTS posture(
+                        timeymd TEXT NOT NULL, 
+                        timehms TEXT NOT NULL, 
+                        posturetype INTEGER NOT NULL
+                        );
+                                ''')
+            
+            cursor.execute('''
+                    CREATE table IF NOT EXISTS posturelabel(
+                        category TEXT NOT NULL,
+                        value INTEGER CHECK(value >= -1 AND value <= 4) NOT NULL
+                        );
+                                ''')
+            
+            cursor.execute('''
+                    INSERT INTO posturelabel (category, value) VALUES
+                                ('자리비움', -1),
+                                ('바른 자세', 0),
+                                ('거북목 자세', 1),
+                                ('턱괴는 자세', 2),
+                                ('엎드리는 자세', 3),
+                                ('누워 기대는 자세', 4);
+                                ''')
         
         # 변경사항 저장
         con.commit()
@@ -653,7 +669,7 @@ class MyWindow(QMainWindow):
     def run(self):    
         # 시간 측정을 위한 초기 시간 설정
         prev_time = 0
-        interval = 3  # n초 간격
+        interval = 1  # n초 간격
         
         mp_holistic = mp.solutions.holistic
         
@@ -675,7 +691,7 @@ class MyWindow(QMainWindow):
                     visibility = [landmark.visibility for landmark in results.pose_landmarks.landmark] if results.pose_landmarks else []
                     avg_visibility = np.mean(visibility) if visibility else 0
                     
-                    # 0.3초 간격으로 데이터 처리 및 가시성에 따른 조건부 실행
+                    # n 초 간격으로 데이터 처리 및 가시성에 따른 조건부 실행
                     if (current_time - prev_time) > interval:
                         
                         if avg_visibility > 0.4:  # 사람이 화면에 있을 경우
@@ -886,7 +902,8 @@ class MyWindow(QMainWindow):
         ext = ['.xlsx', '.csv']
         
         savepath = folder_path + base_name + ext[0]
-        savepath2 = folder_path + base_name + ext[1]
+        savepath2 = folder_path + base_name + ext[1]    # posture.csv
+        savepath3 = folder_path + 'posture_data_label_' + dataDate[0] + '_' + dataDate[1] + ext[1] # posturelabel.csv
         
         
         # 폴더가 이미 존재하는지 확인
@@ -905,18 +922,27 @@ class MyWindow(QMainWindow):
         conn = sqlite3.connect('db.sqlite')
         
         query = 'SELECT * FROM POSTURE;'
+        labelquery = 'SELECT * FROM POSTURELABEL;'
         
         # 읽어온 데이터를 데이터프레임으로 변환
         df = pd.read_sql(query, conn)
+        df2 = pd.read_sql(labelquery, conn)
         
         conn.commit()
         # 연결 종료
         conn.close()
         
+        print('쿼리 연결 끝')
+        
         try:
             # 엑셀 파일로 저장
-            df.to_excel(excel_writer=savepath, index=False)
+            # ExcelWriter를 생성하여 두 개의 시트에 데이터프레임 저장
+            with pd.ExcelWriter(savepath) as writer:
+                df.to_excel(writer, sheet_name='POSTURE', index=False)
+                df2.to_excel(writer, sheet_name='POSTURELABEL', index=False)
+                print('엑셀파일로 저장')
             df.to_csv(savepath2, index=False)
+            df2.to_csv(savepath3, index=False)
             logger.info(f"Data saved to {savepath}")
             logger.info(f"Data saved to {savepath2}")
         except Exception as e:
