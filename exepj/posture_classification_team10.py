@@ -51,6 +51,7 @@ class MyWindow(QMainWindow):
         self.th = None          # thread
         self.selected_date = ''
         self.clr_winpos = False
+        self.predictcnt = 10    # n초간 자세를 판별 후 알람
         
         
         # 프로그램 경로
@@ -773,12 +774,12 @@ class MyWindow(QMainWindow):
                         # print(self.posture_okay)
                         
                     # 5초 & 알람 사용O -> 계속 안 좋은 자세 & 자리를 비우지 않음 -> 알람 함수 호출, 기준 초기화
-                    if (len(self.posture_okay)==5)&self.usingAlarm:
+                    if (len(self.posture_okay)==self.predictcnt)&self.usingAlarm:
                         if (self.posture_okay.count(0)==0)&(self.posture_okay.count(-1)!=len(self.posture_okay)):
                             self.bad_posture_alarm()
                         self.posture_okay = []
                     # 5초 지남 & 알람 사용X -> 기준 초기화
-                    elif (len(self.posture_okay)==5):
+                    elif (len(self.posture_okay)==self.predictcnt):
                         self.posture_okay = []
                         
                     # 윈도우 창에 webcam 출력
