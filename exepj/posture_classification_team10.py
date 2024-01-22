@@ -14,7 +14,6 @@ from PyQt5.QtCore import Qt, QDateTime, QSettings, QPoint
 from PyQt5.QtWidgets import QApplication
 
 import sqlite3
-import csv # 추가할까말까
 
 import mediapipe as mp
 import joblib
@@ -84,14 +83,7 @@ class MyWindow(QMainWindow):
         self.setLayout(v_layout)
         
         self.update_time()          # 상태표시줄 시간 출력
-        # self.update_combobox()
-        # self.insert_data('2024.01.22','09:38:00',2)
-        # self.date_combobox.currentIndexChanged.connect(self.draw_daychart)
-        # self.update_combobox()
-        # self.draw_daychart()
-        # self.show_daychart()
-        # self.delete_data()
-        
+    
         self.date_combobox.currentIndexChanged.connect(self.draw_daychart)
         self.update_combobox()
         self.show()
@@ -186,16 +178,16 @@ class MyWindow(QMainWindow):
        
     ######################################################################################################### 메뉴바    
     def ui_menu(self):
-        # filemenu 버튼
-        alarmCheck = QAction('자세 알람 사용', self, checkable=True)
-        alarmCheck.setChecked(True)                                     # 체크된 상태로 시작
+        # filemenu 버튼    
         exitAction = QAction('프로그램 종료', self)
-        dbToxlsx = QAction('엑셀 파일로 저장하기', self)
+        dbToxlsx = QAction('데이터 내보내기( .xlsx, .csv )', self)
         clearDB = QAction('DB 초기화', self)
         
         # settingsmenu 버튼
         clearpos = QAction('프로그램 창 위치 초기화', self)
-
+        alarmCheck = QAction('자세 알람 사용', self, checkable=True)
+        alarmCheck.setChecked(True)  # 체크된 상태로 시작
+        
         
         # 메뉴바
         menubar = self.menuBar()
@@ -206,7 +198,7 @@ class MyWindow(QMainWindow):
         settingmenu = menubar.addMenu('Settings')
         
         # filemenu 탭에 추가
-        filemenu.addAction(alarmCheck)
+        
         filemenu.addAction(dbToxlsx)
         filemenu.addAction(clearDB)
         
@@ -222,21 +214,31 @@ class MyWindow(QMainWindow):
         
         
         # settingsmenu 탭에 추가
+        settingmenu.addAction(alarmCheck)
         settingmenu.addAction(clearpos)
         
         
         # 연결
-        alarmCheck.triggered.connect(self.using_alarm)
         dbToxlsx.triggered.connect(self.export_file)
         clearDB.triggered.connect(self.delete_data)
         exitAction.triggered.connect(self.close)
         
         clearpos.triggered.connect(self.clear_windowpos)
+        alarmCheck.triggered.connect(self.using_alarm)
         
         
         # 단축키 설정
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
+        
+    def model_setting_change(self):
+        # 메인 창 숨김
+        self.hide()
+        # 두 번째 창 활성화
+        self.second_win = ModelSettingChangeWidget()
+        self.second_win.exec()
+        # 두 번째 창을 닫으면 다시 메인 창이 활성화
+        self.show()
         
         
     ##################################################################################################### DB 초기 세팅    
@@ -282,23 +284,6 @@ class MyWindow(QMainWindow):
         self.setCentralWidget(self.Stack)
         
         
-    # def ready_save(self):
-    #     self.columns = ['timeymd', 'timehms', 'posturetype']
-    #     # 새로 추가할 데이터
-    #     self.data = pd.DataFrame(columns=self.columns)
-        
-    # def setting_file(self):
-    #     # self.data_path = os.path.join(self.script_directory, 'posture_data.csv')
-    #     try:
-    #         # 기존 데이터
-    #         self.saveData = pd.read_csv('posture_data.csv')
-    #     except FileNotFoundError:
-    #         self.data.to_csv('posture_data.csv', index=False)
-    #         self.saveData = pd.read_csv('posture_data.csv')
-        
-
-        
-    
     ################################################################################################### db 통계 페이지
     def ui_statistic_db(self):   
         # stat_day_widget
@@ -377,20 +362,6 @@ class MyWindow(QMainWindow):
         print('######################### combo update : ', self.iii)
         self.iii += 1
 
-            
-           
-    ####################################################################################### (combobox용) 지정 날짜 반영 
-    # def connect_to_selected_date(self):
-    #     self.selected_date = self.date_combobox.currentText()
-    #     # self.draw_daychart()
-    #     print('---------------------------------connect select date')
-        
-    # def connect_to_change(self):
-    #     print('+++++++++++++++++++++++++++++++++ connect change')
-    #     self.connect_to_selected_date()
-    #     self.draw_daychart()
-        
-        
         
     ############################################################################## (combobox용) unique 날짜 데이터 조회
     # return : [unique 날짜들]
@@ -815,12 +786,6 @@ class MyWindow(QMainWindow):
                         # DB에 데이터 추가 : ['yyyy.MM.dd', 'hh:mm:ss', n]
                         self.insert_data(dataDate[0],dataDate[1],int(class_name))
                         
-                        # {ymd, hms, posturetype} 데이터 저장 - csv용
-                        # dataDate.append(class_name)
-                        # perData = dict(zip(self.columns, dataDate))
-                        # perData = pd.DataFrame(perData, index=[0])
-                        # self.data = pd.concat([self.data,perData])
-                        
                         # 상태표시줄 시간 갱신
                         self.update_time()
                         
@@ -1028,6 +993,9 @@ class MyWindow(QMainWindow):
         elif class_name == 0:
             self.correctLabel.setStyleSheet("color: blue;"
                                "background-color: #87CEEB")
+   
+
+   
    
 
 if __name__ == '__main__':
