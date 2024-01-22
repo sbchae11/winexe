@@ -10,7 +10,7 @@ from PyQt5.QtGui import *
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 
-from PyQt5.QtCore import Qt, QDateTime
+from PyQt5.QtCore import Qt, QDateTime, QSettings, QPoint
 from PyQt5.QtWidgets import QApplication
 
 import sqlite3
@@ -30,6 +30,16 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 
+import logging
+
+
+logging.basicConfig(filename="./log_file.txt", level=logging.DEBUG, 
+                    format="[ %(asctime)s | %(levelname)s ] %(message)s", 
+                    datefmt="%Y-%m-%d %H:%M:%S")
+
+logger = logging.getLogger()
+
+
 
 # MyWindow(QMainWindow, form_class)
 class MyWindow(QMainWindow):
@@ -41,6 +51,7 @@ class MyWindow(QMainWindow):
         self.posture_okay = []  # 자세 판단 데이터
         self.th = None          # thread
         self.selected_date = ''
+        self.clr_winpos = False
         
         #######################
         # 디버깅용
@@ -105,14 +116,38 @@ class MyWindow(QMainWindow):
         
         # 현재 모니터 객체에 접근
         screen = app.primaryScreen()
+        
+        # 설정을 읽어와서 이전에 저장한 위치를 가져옴
+        settings = QSettings("team10", "Posture")
+        pos = settings.value("pos", type=QPoint)
+        
+        if (pos.x()==0)&(pos.y()==0):
+            self.move(0, screen.availableGeometry().height()-500)
+            settings.setValue("pos", QPoint(0, screen.availableGeometry().height()-500))
+            self.clr_winpos = False
+        else:
+            self.move(pos)
+        
+        
         # (x, y, width, height) 프로그램 실행 시 위치 고정
-        self.setGeometry(0, screen.availableGeometry().height()-500, 650, 500)
+        # self.setGeometry(0, screen.availableGeometry().height()-500, 650, 500)
         
         # 프로그램 창 크기 고정
         self.setFixedSize(650, 500)
         
+    ############################################################################################### 종료 전 위치 저장
+    def save_windowpos_before_close(self):
+        # 프로그램 종료 전에 현재 윈도우 위치를 설정에 저장
+        settings = QSettings("team10", "Posture")
+        settings.setValue("pos", self.pos())
+        
+    def clear_windowpos(self):
+        settings = QSettings("team10", "Posture")
+        settings.remove("pos")
+        self.clr_winpos = True
     
-    ########################################################################################### webcam 페이지 레이아웃
+    
+    ########################################################################################## webcam 페이지 레이아웃
     def ui_mainLayout(self):        
         # 버튼 : 시작, 통계, 중지, 종료
         self.startBtn = QPushButton(text="▶", parent=self)
@@ -149,14 +184,17 @@ class MyWindow(QMainWindow):
         self.webcam.setLayout(main_layout)
     
        
-    ########################################################################################################## 메뉴바    
+    ######################################################################################################### 메뉴바    
     def ui_menu(self):
-        # 메뉴바 버튼
+        # filemenu 버튼
         alarmCheck = QAction('자세 알람 사용', self, checkable=True)
         alarmCheck.setChecked(True)                                     # 체크된 상태로 시작
         exitAction = QAction('프로그램 종료', self)
         dbToxlsx = QAction('엑셀 파일로 저장하기', self)
         clearDB = QAction('DB 초기화', self)
+        
+        # settingsmenu 버튼
+        clearpos = QAction('프로그램 창 위치 초기화', self)
 
         
         # 메뉴바
@@ -165,8 +203,9 @@ class MyWindow(QMainWindow):
         
         # 메뉴바 File 탭
         filemenu = menubar.addMenu('File')
+        settingmenu = menubar.addMenu('Settings')
         
-        # 메뉴바 탭에 추가
+        # filemenu 탭에 추가
         filemenu.addAction(alarmCheck)
         filemenu.addAction(dbToxlsx)
         filemenu.addAction(clearDB)
@@ -181,11 +220,19 @@ class MyWindow(QMainWindow):
         
         filemenu.addAction(exitAction)
         
+        
+        # settingsmenu 탭에 추가
+        settingmenu.addAction(clearpos)
+        
+        
         # 연결
         alarmCheck.triggered.connect(self.using_alarm)
-        dbToxlsx.triggered.connect(self.save_xlsx)
+        dbToxlsx.triggered.connect(self.export_file)
         clearDB.triggered.connect(self.delete_data)
         exitAction.triggered.connect(self.close)
+        
+        clearpos.triggered.connect(self.clear_windowpos)
+        
         
         # 단축키 설정
         exitAction.setShortcut('Ctrl+Q')
@@ -850,6 +897,8 @@ class MyWindow(QMainWindow):
         print('###### exit')
         if self.running:
             self.stop()
+        if self.clr_winpos==False:
+            self.save_windowpos_before_close()
         
         
     ######################################################################################### 프로그램 종료 이벤트 함수   
@@ -857,6 +906,8 @@ class MyWindow(QMainWindow):
         print('###### exit2')
         if self.running:
             self.stop()
+        if self.clr_winpos==False:
+            self.save_windowpos_before_close()
         sys.exit()
        
        
@@ -912,21 +963,33 @@ class MyWindow(QMainWindow):
     #     # 현재 시간
     #     current_time = time.time()   
     
-    
-    ########################################################################################## export xlsx 이벤트 함수
-    # exe파일로 묶으면 작동을 안함
-    def save_xlsx(self):
-        options = QFileDialog.Options()
         
-        file_path, _ = QFileDialog.getSaveFileName(None, 'Save Excel File', './', 
-                                                   'Excel files (*.xlsx);;All Files (*)', 
-                                                   options=options)
-        if file_path:
-            print('파일 경로 전달: ', file_path)
-            self.export_xlsx(file_path)
+    ######################################################################################## xlsx 파일로 저장하는 함수
+    def export_file(self):
+        folder_path = self.program_directory + 'export\\'
         
-    ########################################################################### ( save_xlsx ) xlsx 파일로 저장하는 함수
-    def export_xlsx(self, savepath):
+        datetime = QDateTime.currentDateTime().toString('yyyy_MM_dd,hh_mm_ss')
+        dataDate = datetime.split(',')
+        
+        base_name = 'posture_data_' + dataDate[0] + '_' + dataDate[1]
+        ext = ['.xlsx', '.csv']
+        
+        savepath = folder_path + base_name + ext[0]
+        savepath2 = folder_path + base_name + ext[1]
+        
+        
+        # 폴더가 이미 존재하는지 확인
+        if not os.path.exists(folder_path):
+            try:
+                os.makedirs(folder_path)
+                logger.info(f"폴더가 성공적으로 생성되었습니다: {folder_path}")
+            except OSError as e:
+                logger.info(f"폴더 생성에 실패했습니다: {folder_path}, 오류: {e}")
+        else:
+            logger.info(f"폴더가 이미 존재합니다: {folder_path}")
+            
+            
+        # logger.info(savepath)
         print('##################export_xlsx 진입')
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
@@ -942,10 +1005,12 @@ class MyWindow(QMainWindow):
         
         try:
             # 엑셀 파일로 저장
-            df.to_excel(savepath, index=False)
-            print(f"Data saved to {savepath}")
+            df.to_excel(excel_writer=savepath, index=False)
+            df.to_csv(savepath2, index=False)
+            logger.info(f"Data saved to {savepath}")
+            logger.info(f"Data saved to {savepath2}")
         except Exception as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
         return
     
     
