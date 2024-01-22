@@ -933,15 +933,12 @@ class MyWindow(QMainWindow):
         # 연결 종료
         conn.close()
         
-        print('쿼리 연결 끝')
-        
         try:
             # 엑셀 파일로 저장
             # ExcelWriter를 생성하여 두 개의 시트에 데이터프레임 저장
             with pd.ExcelWriter(savepath) as writer:
                 df.to_excel(writer, sheet_name='POSTURE', index=False)
                 df2.to_excel(writer, sheet_name='POSTURELABEL', index=False)
-                print('엑셀파일로 저장')
             df.to_csv(savepath2, index=False)
             df2.to_csv(savepath3, index=False)
             logger.info(f"Data saved to {savepath}")
