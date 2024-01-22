@@ -73,8 +73,16 @@ class MyWindow(QMainWindow):
         self.setLayout(v_layout)
         
         self.update_time()          # 상태표시줄 시간 출력
-        self.update_combobox()
+        # self.update_combobox()
+        # self.insert_data('2024.01.22','09:38:00',2)
+        # self.date_combobox.currentIndexChanged.connect(self.draw_daychart)
+        # self.update_combobox()
+        # self.draw_daychart()
+        # self.show_daychart()
+        # self.delete_data()
         
+        self.date_combobox.currentIndexChanged.connect(self.draw_daychart)
+        self.update_combobox()
         self.show()
         
         app.aboutToQuit.connect(self.onExit) # 종료 시 onExit
@@ -262,6 +270,9 @@ class MyWindow(QMainWindow):
         self.date_combobox2 = QComboBox(self)
         
         
+        # self.date_combobox.currentIndexChanged.connect(self.connect_to_change)
+        
+        
         # outer stack layout
         statdb_layout = QVBoxLayout()
         
@@ -306,6 +317,7 @@ class MyWindow(QMainWindow):
             date_list = self.get_alldates()
             if date_list != []:
                 self.date_combobox.addItem(date_list.pop())
+                # if date_list != []
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
         else : # combobox가 비어있지 않은 경우
@@ -317,13 +329,19 @@ class MyWindow(QMainWindow):
                 self.date_combobox.addItems(date_list)
         print('######################### combo update : ', self.iii)
         self.iii += 1
-        self.date_combobox.currentIndexChanged.connect(self.connect_to_selected_date)
-            # print("################################# 콤보박스 업데이트")
+
             
            
     ####################################################################################### (combobox용) 지정 날짜 반영 
-    def connect_to_selected_date(self):
-        self.selected_date = self.date_combobox.currentText()
+    # def connect_to_selected_date(self):
+    #     self.selected_date = self.date_combobox.currentText()
+    #     # self.draw_daychart()
+    #     print('---------------------------------connect select date')
+        
+    # def connect_to_change(self):
+    #     print('+++++++++++++++++++++++++++++++++ connect change')
+    #     self.connect_to_selected_date()
+    #     self.draw_daychart()
         
         
         
@@ -518,8 +536,10 @@ class MyWindow(QMainWindow):
         if self.running:
             self.stop()   # 페이지 이동 시 thread 종료
         self.Stack.setCurrentIndex(1)
-        self.inner_Stack.setCurrentIndex(0)   
-        self.draw_daychart()                    # 일일 그래프 출력
+        self.inner_Stack.setCurrentIndex(0)  
+        self.update_combobox()
+        # self.date_combobox.currentIndexChanged.connect(self.draw_daychart)
+        # self.draw_daychart()                    # 일일 그래프 출력
         self.lineBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
         print('@@@@@@@@@@@@@@@@@@@@@ show day chart 종료 : ', self.iii)
@@ -587,7 +607,7 @@ class MyWindow(QMainWindow):
         plt.rcParams['axes.unicode_minus'] =False
 
         # ComboBox에서 선택된 날짜 가져오기
-        self.update_combobox()
+        self.selected_date = self.date_combobox.currentText()
         # 일일 데이터 : [전체 수, 나쁜 자세 수, -1, 0, 1, 2, 3, 4]
         oneday_data = self.get_onedaydata(self.selected_date)
 
