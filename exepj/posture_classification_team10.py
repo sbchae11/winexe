@@ -52,9 +52,6 @@ class MyWindow(QMainWindow):
         self.selected_date = ''
         self.clr_winpos = False
         
-        #######################
-        # 디버깅용
-        self.iii = 0
         
         # 프로그램 경로
         self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
@@ -356,8 +353,7 @@ class MyWindow(QMainWindow):
                 self.date_combobox.addItem(date_list.pop())
                 date_list.sort(reverse=True)
                 self.date_combobox.addItems(date_list)
-        print('######################### combo update : ', self.iii)
-        self.iii += 1
+
 
         
     ############################################################################## (combobox용) unique 날짜 데이터 조회
@@ -383,9 +379,7 @@ class MyWindow(QMainWindow):
         # list로 변환
         alldates = [date[0] for date in alldates]   
         
-        print('$$$$$$$$$$$$$ alldatas : ',self.iii)
-        self.iii += 1
-        
+
         return alldates
     
     
@@ -426,8 +420,6 @@ class MyWindow(QMainWindow):
                 if oneday[i]==None:
                     oneday[i] = 0
                     
-        print('************** one day : ',self.iii)
-        self.iii += 1
         
         return oneday
         
@@ -495,9 +487,6 @@ class MyWindow(QMainWindow):
                 correct_ratio.append(0)
                 incorrect_ratio.append(0)
                 
-        print('((((((((((((((((())))))))))))))))) sevendays : ', self.iii)
-        self.iii += 1
-
         return date_label, correct_ratio, incorrect_ratio
     
     
@@ -540,14 +529,10 @@ class MyWindow(QMainWindow):
     def show_webcam(self):
         self.Stack.setCurrentIndex(0)
         self.correctLabel.setVisible(False)
-        print('###### webcam 페이지 : ', self.iii)
-        self.iii += 1
         
         
     ######################################################################################## 일일 통계 페이지 출력 함수
     def show_daychart(self):
-        print('@@@@@@@@@@@@@@@@@ show daychart 시작 : ', self.iii)
-        self.iii += 1
         if self.running:
             self.stop()   # 페이지 이동 시 thread 종료
         self.Stack.setCurrentIndex(1)
@@ -557,8 +542,6 @@ class MyWindow(QMainWindow):
         # self.draw_daychart()                    # 일일 그래프 출력
         self.lineBtn.setEnabled(True)
         self.pieBtn.setEnabled(False)  
-        print('@@@@@@@@@@@@@@@@@@@@@ show day chart 종료 : ', self.iii)
-        self.iii += 1
         
     
     ######################################################################################### 주간 통계 페이지 출력 함수
@@ -568,8 +551,6 @@ class MyWindow(QMainWindow):
         self.date_combobox2.setEnabled(False)
         self.lineBtn.setEnabled(False)
         self.pieBtn.setEnabled(True)
-        print('주간 통계 페이지 : ', self.iii)
-        self.iii += 1
 
     
     ############################################################################################# 주간 그래프 생성 함수
@@ -595,27 +576,19 @@ class MyWindow(QMainWindow):
         axdb.legend()
         axdb.set_title(graphLabel)
         
-        print('draw weekchart : ', self.iii)
-        self.iii+=1
-        
         self.weekCanvas.draw()
         
         
     ############################################################################################# 일일 그래프 생성 함수
     def draw_daychart(self):
-
-        print('&&&&&&&&&& working start')
-        print("#########################################")
-        for thread in threading.enumerate(): 
-            print('***', thread.name)
-        print("#########################################")
+        # print("#########################################")
+        # for thread in threading.enumerate(): 
+        #     print('***', thread.name)
+        # print("#########################################")
         
         
         # 그래프 초기화
         self.canvas.figure.clear()
-        
-        print('daily front : ', self.iii)
-        self.iii+=1
         
         # 한글 출력 설정
         plt.rcParams['font.family'] ='Malgun Gothic'
@@ -673,13 +646,7 @@ class MyWindow(QMainWindow):
             axdb[1].legend(legend_handles, not_zero_label, loc='upper left', bbox_to_anchor=(0.65, 1.1), fontsize='9')
         
         self.canvas.draw()
-        
-        print('daily end : ', self.iii)
-        self.iii += 1
-        
 
-        
-        print("&&&&&&&&&&&&&&& working done")
             
 
     ###################################################################################################### 모델 동작부
@@ -768,7 +735,7 @@ class MyWindow(QMainWindow):
                             class_name = -1
                         
                         
-                        print("자세 : ", class_name)
+                        # print("자세 : ", class_name)
                         
                         # 다음 데이터 처리 시간 업데이트
                         prev_time = current_time
@@ -778,7 +745,7 @@ class MyWindow(QMainWindow):
                         
                         # ['yyyy.MM.dd', 'hh:mm:ss']
                         dataDate = self.datetime.split(',')
-                        print(dataDate)
+                        # print(dataDate)
                         
                         # DB에 데이터 추가 : ['yyyy.MM.dd', 'hh:mm:ss', n]
                         self.insert_data(dataDate[0],dataDate[1],int(class_name))
@@ -788,7 +755,7 @@ class MyWindow(QMainWindow):
                         
                         # 자세 교정 기준 - 알림용
                         self.posture_okay.append(class_name)
-                        print(self.posture_okay)
+                        # print(self.posture_okay)
                         
                     # 5초 & 알람 사용O -> 계속 안 좋은 자세 & 자리를 비우지 않음 -> 알람 함수 호출, 기준 초기화
                     if (len(self.posture_okay)==5)&self.usingAlarm:
@@ -815,26 +782,20 @@ class MyWindow(QMainWindow):
                 
         # thread 종료    
         self.cap.release()
-        print('###### thread end')
         # 정지 시 화면 대기 중 이미지 출력
         self.webLabel.setPixmap(QtGui.QPixmap(self.program_directory + 'su_final.png'))
         
         
     ############################################################################################ 정지 버튼 이벤트 함수
     def stop(self):
-        print('press stop')
-        print("stop : ", self.iii)
-        self.iii +=1
         self.running = False                        # thread 종료
         self.correctLabel.setVisible(False)         # 사용자 피드백 label 숨김
         self.th.join()                              # self.th가 종료될 때까지 대기
         self.startBtn.setEnabled(True)
-        print('###### stop')
         
         
     ############################################################################################ 시작 버튼 이벤트 함수
     def startfunc(self):
-        print('press start')
         self.cap = cv2.VideoCapture(0)
         ret, frame = self.cap.read()
         in_use = ret
@@ -847,7 +808,6 @@ class MyWindow(QMainWindow):
             self.th.start()
             # thread 중복 시작 방지
             self.startBtn.setEnabled(False)
-            print('###### start')
         # webcam 접근 불가
         else: 
             self.webLabel.setText("웹캠이 사용 중입니다. 다른 곳에서의 사용을 중지 후 다시 재생 버튼을 눌러주세요.")
@@ -856,7 +816,6 @@ class MyWindow(QMainWindow):
     
     ######################################################################################## 프로그램 종료 이벤트 함수
     def onExit(self):
-        print('###### exit')
         if self.running:
             self.stop()
         if self.clr_winpos==False:
@@ -865,7 +824,6 @@ class MyWindow(QMainWindow):
         
     ######################################################################################### 프로그램 종료 이벤트 함수   
     def onExit2(self):
-        print('###### exit2')
         if self.running:
             self.stop()
         if self.clr_winpos==False:
@@ -899,8 +857,6 @@ class MyWindow(QMainWindow):
         
         # combobox 데이터 초기화
         self.date_combobox.clear()
-        print('delete data : ', self.iii)
-        self.iii +=1
         
         
     ################################################################################### 알람 사용 checkbox 이벤트 함수
@@ -919,12 +875,6 @@ class MyWindow(QMainWindow):
                 icon_path=self.program_directory + 'logo_page.ico', # icon 위치
                 duration=3)
         
-
-    # # 스트레칭 알람 쓸지말지 고민좀..
-    # def stretching_alarm(self):
-    #     # 현재 시간
-    #     current_time = time.time()   
-    
         
     ######################################################################################## xlsx 파일로 저장하는 함수
     def export_file(self):
