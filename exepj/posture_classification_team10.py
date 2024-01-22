@@ -120,7 +120,6 @@ class MyWindow(QMainWindow):
         else:
             self.move(pos)
         
-        
         # (x, y, width, height) 프로그램 실행 시 위치 고정
         # self.setGeometry(0, screen.availableGeometry().height()-500, 650, 500)
         
@@ -212,7 +211,6 @@ class MyWindow(QMainWindow):
         
         filemenu.addAction(exitAction)
         
-        
         # settingsmenu 탭에 추가
         settingmenu.addAction(alarmCheck)
         settingmenu.addAction(clearpos)
@@ -225,7 +223,6 @@ class MyWindow(QMainWindow):
         
         clearpos.triggered.connect(self.clear_windowpos)
         alarmCheck.triggered.connect(self.using_alarm)
-        
         
         # 단축키 설정
         exitAction.setShortcut('Ctrl+Q')
