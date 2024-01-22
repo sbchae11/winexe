@@ -733,8 +733,7 @@ class MyWindow(QMainWindow):
                         else:
                             # 가시성이 낮을 때는 대기 메시지 표시
                             class_name = -1
-                        
-                        
+
                         # print("자세 : ", class_name)
                         
                         # 다음 데이터 처리 시간 업데이트
@@ -902,7 +901,6 @@ class MyWindow(QMainWindow):
             
             
         # logger.info(savepath)
-        print('##################export_xlsx 진입')
         # SQLite3 데이터베이스 연결
         conn = sqlite3.connect('db.sqlite')
         
