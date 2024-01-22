@@ -760,6 +760,7 @@ class MyWindow(QMainWindow):
                         self.show_corincor_color(int(class_name))
                         
                         # ['yyyy.MM.dd', 'hh:mm:ss']
+                        self.datetime = QDateTime.currentDateTime().toString('yyyy.MM.dd,hh:mm:ss')
                         dataDate = self.datetime.split(',')
                         # print(dataDate)
                         
