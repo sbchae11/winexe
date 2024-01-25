@@ -826,7 +826,7 @@ class MyWindow(QMainWindow):
         # thread 종료    
         self.cap.release()
         # 정지 시 화면 대기 중 이미지 출력
-        self.webLabel.setPixmap(QtGui.QPixmap(self.program_directory + 'su_final.png'))
+        self.webLabel.setPixmap(QtGui.QPixmap(self.program_directory + 'imgs/su_final.png'))
         
         
     ############################################################################################ 정지 버튼 이벤트 함수
@@ -840,7 +840,10 @@ class MyWindow(QMainWindow):
     ############################################################################################ 시작 버튼 이벤트 함수
     def startfunc(self):
         self.cap = cv2.VideoCapture(0)
+        logger.info(f"is cap opened? : {self.cap.isOpened()}")
+        time.sleep(1)
         ret, frame = self.cap.read()
+        logger.info(f"ret : {ret}, frame : {frame}")
         in_use = ret
         # webcam 접근 가능
         if in_use:
@@ -933,12 +936,12 @@ class MyWindow(QMainWindow):
         datetime = QDateTime.currentDateTime().toString('yyyy_MM_dd,hh_mm_ss')
         dataDate = datetime.split(',')
         
-        base_name = filename + '_' + dataDate[0] + '_' + dataDate[1]
+        base_name = filename + '-' + dataDate[0] + '-' + dataDate[1]
         ext = ['.xlsx', '.csv']
         
         savepath = folder_path + base_name + ext[0]
         savepath2 = folder_path + base_name + ext[1]    # posture.csv
-        savepath3 = folder_path + filename + '_label_' + dataDate[0] + '_' + dataDate[1] + ext[1] # posturelabel.csv
+        savepath3 = folder_path + filename + '_label-' + dataDate[0] + '-' + dataDate[1] + ext[1] # posturelabel.csv
         
         
         # 폴더가 이미 존재하는지 확인

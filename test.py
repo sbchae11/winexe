@@ -39,5 +39,3 @@
 
 from PyQt5.QtCore import QDate, QTime, Qt, QDateTime
 
-date = QDateTime.currentDateTime()
-print(date.addDays(-7).toString('yyyy.MM.dd'))

@@ -17,7 +17,7 @@ buildOptions = {
     ("C:\\Users\\user\\aivle\\bp\\winexe\\exepj\\preprocessing.py", 'preprocessing.py'),
     ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\sklearn\\.libs\\msvcp140.dll", 'msvcp140.dll'),
     ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll", 'vcomp140.dll'),
-    ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\cv2\\opencv_videoio_ffmpeg490_64.dll", 'opencv_videoio_ffmpeg490_64.dll'),
+    ("C:\\Users\\user\\anaconda3\\envs\\ss\\Lib\\site-packages\\cv2\\opencv_videoio_ffmpeg490_64.dll", './lib/cv2/opencv_videoio_ffmpeg490_64.dll'),
     ],
     "include_msvcr": True   #skip error msvcr100.dll missing
 }

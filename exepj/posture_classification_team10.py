@@ -53,6 +53,8 @@ class MyWindow(QMainWindow):
         self.clr_winpos = False
         self.predictcnt = 10    # n초간 자세를 판별 후 알람
         
+        self.toast = wt.ToastNotifier()
+        
         
         # 프로그램 경로
         self.program_directory = os.path.dirname(os.path.abspath(__file__)) + '\\'
@@ -886,8 +888,8 @@ class MyWindow(QMainWindow):
     
     ############################################################################################## 나쁜 자세 알람 함수
     def bad_posture_alarm(self):
-        toast = wt.ToastNotifier()
-        toast.show_toast("!!! 자세 경고 !!!", # 제목
+        
+        self.toast.show_toast("!!! 자세 경고 !!!", # 제목
                 "자세가 올바르지 않습니다. \n 건강을 위해 바른 자세를 취해주세요.", # 내용
                 icon_path=self.program_directory + 'logo_page.ico', # icon 위치
                 duration=3)
@@ -965,6 +967,16 @@ class MyWindow(QMainWindow):
                                "background-color: #87CEEB")
    
 
+# import getpass
+# def authenticate():
+#     password = getpass.getpass("암호를 입력하세요: ")
+    
+#     if password != "암호":
+#         print("잘못된 암호입니다.")
+#         authenticate()
+
+   
+   
    
    
 
@@ -988,6 +1000,9 @@ if __name__ == '__main__':
     palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
     palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(palette)
+    
+        
+    authenticate()
     
     myWindow = MyWindow( )
     myWindow.show( )
